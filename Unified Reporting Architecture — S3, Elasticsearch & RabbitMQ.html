@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<!-- saved from url=(0051)file:///C:/Users/UmarMukhtar/Downloads/index_1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unified Reporting Architecture — S3, Elasticsearch &amp; RabbitMQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link href="./Unified Reporting Architecture — S3, Elasticsearch &amp; RabbitMQ_files/css2" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f6f3;
+    --bg3: #f0efe9;
+    --text: #1a1a18;
+    --text2: #5c5c57;
+    --text3: #9c9a92;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --radius: 10px;
+    --radius-lg: 14px;
+    --ff-display: 'Fraunces', Georgia, serif;
+    --ff-body: 'Inter', system-ui, sans-serif;
+    --ff-mono: 'IBM Plex Mono', monospace;
+    --tag-s3: #0F6E56; --tag-s3-bg: #E1F5EE;
+    --tag-es: #185FA5; --tag-es-bg: #E6F1FB;
+    --tag-rmq: #854F0B; --tag-rmq-bg: #FAEEDA;
+    --tag-lake: #534AB7; --tag-lake-bg: #EEEDFE;
+    --tag-rt: #993C1D; --tag-rt-bg: #FAECE7;
+    --green: #1D9E75; --amber: #BA7517; --red: #E24B4A;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --bg2: #242420; --bg3: #2c2c28;
+      --text: #e8e6de; --text2: #a8a69e; --text3: #6a6860;
+      --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.18);
+      --tag-s3: #5DCAA5; --tag-s3-bg: #04342C;
+      --tag-es: #85B7EB; --tag-es-bg: #042C53;
+      --tag-rmq: #EF9F27; --tag-rmq-bg: #412402;
+      --tag-lake: #AFA9EC; --tag-lake-bg: #26215C;
+      --tag-rt: #F0997B; --tag-rt-bg: #4A1B0C;
+    }
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--ff-body);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  /* ── Page chrome ── */
+  .page-header {
+    border-bottom: 0.5px solid var(--border);
+    padding: 18px 0;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .page-header-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .page-logo {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+  .page-badge {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    color: var(--text3);
+  }
+
+  /* ── Main layout ── */
+  .main { max-width: 860px; margin: 0 auto; padding: 48px 28px 80px; }
+
+  /* ── Report header ── */
+  .report-eyebrow {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .report-title {
+    font-family: var(--ff-display);
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.15;
+    margin-bottom: 14px;
+    max-width: 700px;
+  }
+  .report-desc {
+    font-size: 15px;
+    color: var(--text2);
+    max-width: 620px;
+    line-height: 1.65;
+    margin-bottom: 24px;
+  }
+  .report-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text3);
+    padding-bottom: 32px;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .report-meta span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green { background: #1D9E75; }
+  .dot.amber { background: #BA7517; }
+  .dot.blue  { background: #185FA5; }
+
+  /* ── Constraints bar ── */
+  .constraints-bar {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    margin-bottom: 36px;
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+  .constraint-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--ff-mono);
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  /* ── Rec cards ── */
+  .rec-card {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .rec-card:hover { border-color: var(--border2); }
+  .rec-card.open { border-color: var(--border2); }
+
+  .rec-header {
+    padding: 18px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .rec-num {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--text3);
+    flex-shrink: 0;
+    padding-top: 3px;
+    min-width: 24px;
+  }
+  .rec-title-block { flex: 1; }
+  .rec-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .rec-subtitle { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+  .rec-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    font-family: var(--ff-mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+  .tag.s3   { background: var(--tag-s3-bg);   color: var(--tag-s3); }
+  .tag.es   { background: var(--tag-es-bg);   color: var(--tag-es); }
+  .tag.rmq  { background: var(--tag-rmq-bg);  color: var(--tag-rmq); }
+  .tag.lake { background: var(--tag-lake-bg); color: var(--tag-lake); }
+  .tag.rt   { background: var(--tag-rt-bg);   color: var(--tag-rt); }
+
+  .rec-chevron {
+    font-size: 11px;
+    color: var(--text3);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+    margin-top: 4px;
+    padding: 0 2px;
+  }
+  .rec-card.open .rec-chevron { transform: rotate(180deg); }
+
+  .rec-body {
+    display: none;
+    padding: 0 20px 20px;
+    border-top: 0.5px solid var(--border);
+  }
+  .rec-card.open .rec-body { display: block; }
+
+  .rec-desc {
+    font-size: 13.5px;
+    color: var(--text2);
+    line-height: 1.65;
+    padding: 16px 0 12px;
+  }
+
+  /* ── Arch flow ── */
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin: 4px 0 16px;
+    overflow-x: auto;
+    padding: 12px 0;
+    scrollbar-width: thin;
+  }
+  .af-node { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 72px; }
+  .af-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+    border: 0.5px solid var(--border);
+  }
+  .af-label { font-size: 10px; color: var(--text3); text-align: center; font-family: var(--ff-mono); line-height: 1.3; max-width: 68px; }
+  .af-arrow { font-size: 13px; color: var(--text3); padding: 0 2px; align-self: center; margin-bottom: 20px; flex-shrink: 0; }
+
+  /* ── Detail grid ── */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: 10px;
+    margin: 0 0 12px;
+  }
+  @media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-cell {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+  }
+  .detail-cell.full { grid-column: 1 / -1; }
+  .dc-label {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+  .dc-content { font-size: 12.5px; color: var(--text2); line-height: 1.6; }
+  .dc-content strong { color: var(--text); font-weight: 500; }
+
+  /* ── Strength badges ── */
+  .strength-bar { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .sb-item { font-size: 11px; padding: 2px 9px; border-radius: 4px; }
+  .sb-item.good { background: #E1F5EE; color: #0F6E56; }
+  .sb-item.warn { background: #FAEEDA; color: #854F0B; }
+  @media (prefers-color-scheme: dark) {
+    .sb-item.good { background: #04342C; color: #5DCAA5; }
+    .sb-item.warn { background: #412402; color: #EF9F27; }
+  }
+
+  /* ── Score bars ── */
+  .score-section { background: var(--bg2); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 0; }
+  .score-row { display: flex; gap: 10px; align-items: center; margin: 5px 0; }
+  .score-label { font-size: 11.5px; color: var(--text2); min-width: 110px; }
+  .score-track { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; }
+  .score-val { font-family: var(--ff-mono); font-size: 10px; color: var(--text3); min-width: 28px; text-align: right; }
+
+  /* ── Decision guide ── */
+  .decision-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  @media (max-width: 600px) { .decision-grid { grid-template-columns: 1fr; } }
+
+  /* ── Footer ── */
+  .page-footer {
+    border-top: 0.5px solid var(--border);
+    margin-top: 64px;
+    padding-top: 24px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--ff-mono);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── Print ── */
+  @media print {
+    .page-header { position: static; }
+    .rec-body { display: block !important; }
+    .rec-chevron { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <span class="page-logo">Architecture Report</span>
+    <span class="page-badge">6 Recommendations</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Report header -->
+  <div class="report-eyebrow">Data Architecture · SaaS Reporting</div>
+  <h1 class="report-title">Unified Reporting Across S3, Elasticsearch &amp; RabbitMQ</h1>
+  <p class="report-desc">Architectural recommendations for building a scalable, efficient, and cost-effective solution that enables unified reporting across data fragmented between Amazon S3 and Elasticsearch, leveraging RabbitMQ for data flow.</p>
+  <div class="report-meta">
+    <span><span class="dot green"></span>6 architecture patterns</span>
+    <span><span class="dot blue"></span>Sub-30s dashboard target</span>
+    <span><span class="dot amber"></span>Append + update workloads</span>
+    <span><span class="dot green"></span>SaaS multi-tenant scale</span>
+  </div>
+
+  <!-- Constraints -->
+  <div class="constraints-bar">
+    <div class="constraint-item"><span class="dot green"></span>Append &amp; update only (no deletes)</div>
+    <div class="constraint-item"><span class="dot blue"></span>Incremental ingestion required</div>
+    <div class="constraint-item"><span class="dot amber"></span>Dashboard load &lt; 30 seconds</div>
+    <div class="constraint-item"><span class="dot green"></span>SaaS multi-tenant scale</div>
+  </div>
+
+  <div class="section-label">Recommendations — click any card to expand</div>
+
+  <!-- ─────────────────────────────────────────────────── REC 1 -->
+  <div class="rec-card open" id="r1">
+    <div class="rec-header" onclick="toggle(&#39;r1&#39;)">
+      <span class="rec-num">01</span>
+      <div class="rec-title-block">
+        <div class="rec-title">Apache Kafka + Apache Iceberg Lakehouse on S3</div>
+        <div class="rec-subtitle">Event-driven ingestion with open-table format for unified querying</div>
+        <div class="rec-tags">
+          <span class="tag s3">S3</span><span class="tag es">Elasticsearch</span><span class="tag rmq">RabbitMQ</span><span class="tag lake">Lakehouse</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">Replace RabbitMQ's fan-out with Kafka at the streaming layer, write all data to Apache Iceberg tables on S3. Iceberg's row-level updates, hidden partitioning, and time-travel make it ideal for append+update SaaS workloads. Elasticsearch becomes a downstream sink only — or is retired from the reporting path entirely. Query engines like Trino or Spark SQL read Iceberg directly, enabling sub-30s BI responses via pre-materialized summary layers.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#E1F5EE">🪣</div><div class="af-label">S3 / ES sources</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">🐇</div><div class="af-label">RabbitMQ bridge</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAECE7">🌊</div><div class="af-label">Kafka</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EEEDFE">🧊</div><div class="af-label">Iceberg on S3</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">⚡</div><div class="af-label">Trino / Spark</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">📊</div><div class="af-label">BI / Reports</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content">A <strong>Kafka Connect S3-source connector</strong> tails S3 event notifications. An <strong>ES Kafka connector</strong> streams Elasticsearch changes. RabbitMQ events are bridged to Kafka via a <strong>RabbitMQ Kafka connector</strong> (Confluent or custom AMQP consumer → Kafka producer), preserving your existing RabbitMQ topology.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">Define a <strong>canonical schema in Iceberg</strong>. A lightweight stream processor (Flink or Kafka Streams) deduplicates on a composite key before writing. The last-writer-wins merge policy fits your append+update constraint. Iceberg's <strong>MERGE INTO</strong> handles upserts atomically.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">Iceberg maintains a <strong>positional delete file</strong> for updates — no full rewrites. Kafka offset tracking ensures exactly-once delivery. Compaction jobs (hourly) collapse small files, keeping query performance tight.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">Pre-aggregate summary tables via <strong>dbt + Trino</strong>. Materialized views on hot reporting dimensions (tenant, date, status) keep dashboard queries under 5s. Full historical scans stay under 30s with Iceberg partition pruning.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">Open standard — no vendor lock-in</span>
+            <span class="sb-item good">Row-level updates without full rewrites</span>
+            <span class="sb-item good">Time-travel / schema evolution</span>
+            <span class="sb-item good">Scales to petabytes</span>
+            <span class="sb-item warn">Kafka adds operational overhead</span>
+            <span class="sb-item warn">Cold query latency without pre-aggregation</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>S3 storage:</strong> ~$23/TB/month. <strong>Compute:</strong> Trino on Kubernetes auto-scales; pay per query with Athena ($5/TB scanned). Kafka on MSK or Confluent Cloud scales horizontally. Total TCO is low for SaaS since storage is cheap and compute is elastic. <strong>Best fit:</strong> teams already running Kafka or planning to.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:85%;background:#1D9E75"></div></div><span class="score-val">85</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:82%;background:#1D9E75"></div></div><span class="score-val">82</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:55%;background:#BA7517"></div></div><span class="score-val">55</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:92%;background:#1D9E75"></div></div><span class="score-val">92</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────── REC 2 -->
+  <div class="rec-card" id="r2">
+    <div class="rec-header" onclick="toggle(&#39;r2&#39;)">
+      <span class="rec-num">02</span>
+      <div class="rec-title-block">
+        <div class="rec-title">AWS Glue + Athena + S3 Data Lake</div>
+        <div class="rec-subtitle">Serverless, fully managed ETL pipeline with pay-per-query analytics</div>
+        <div class="rec-tags">
+          <span class="tag s3">S3</span><span class="tag es">Elasticsearch</span><span class="tag rmq">RabbitMQ</span><span class="tag lake">Data Lake</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">A fully AWS-native approach: Glue crawlers inventory S3 data and Elasticsearch snapshots into a unified Glue Catalog. Glue ETL jobs reconcile overlapping fields and write Parquet to a curated S3 zone. Athena queries the catalog directly. RabbitMQ events trigger Glue Workflows via Lambda. No infrastructure to manage — ideal for teams wanting speed-to-value over control.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">🐇</div><div class="af-label">RabbitMQ</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAECE7">λ</div><div class="af-label">Lambda trigger</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">⚙</div><div class="af-label">Glue ETL</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E1F5EE">🪣</div><div class="af-label">S3 Parquet</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">🔍</div><div class="af-label">Athena</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EEEDFE">📊</div><div class="af-label">QuickSight / BI</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content">RabbitMQ consumers publish events to an <strong>SQS queue</strong>. A Lambda function, triggered by SQS, calls the <strong>Glue Workflow API</strong> to start incremental ETL jobs. For Elasticsearch, Glue uses the <strong>OpenSearch connector</strong> (Glue 4.0) to extract changed documents via scroll API with a watermark timestamp.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">Glue's <strong>DynamicFrame ResolveChoice</strong> handles type conflicts between sources. A Glue ETL script merges records on a business key (entity_id + tenant_id), applying <strong>last-write-wins</strong> based on an event timestamp field. Output is written to a single curated Parquet partition.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">Glue <strong>job bookmarks</strong> track the last processed S3 key and ES scroll position. For updates, a <strong>MERGE</strong> step in Glue reads only changed partitions. Alternatively, use Glue with <strong>Apache Hudi</strong> tables for upsert support on S3.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">Use <strong>partition projection</strong> on tenant_id and date. Pre-aggregate with <strong>CTAS materialized views</strong> for common report queries. Expect 3–15s for most dashboard queries on pre-aggregated marts.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">Zero infrastructure management</span>
+            <span class="sb-item good">Native AWS integrations</span>
+            <span class="sb-item good">Glue Catalog = unified metadata</span>
+            <span class="sb-item good">Pay-per-use (Athena $5/TB)</span>
+            <span class="sb-item warn">Glue cold start latency (2–10 min)</span>
+            <span class="sb-item warn">AWS lock-in</span>
+            <span class="sb-item warn">Not ideal for sub-minute freshness</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>Glue ETL:</strong> $0.44/DPU-hour (serverless). <strong>Athena:</strong> $5/TB scanned — use columnar Parquet to reduce scanned bytes by ~10×. <strong>Cost estimate:</strong> moderate daily ETL jobs + 50 concurrent users ≈ $300–800/month at mid-scale. <strong>Best fit:</strong> AWS-native shops without a dedicated data engineering team.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:72%;background:#1D9E75"></div></div><span class="score-val">72</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:78%;background:#1D9E75"></div></div><span class="score-val">78</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:88%;background:#1D9E75"></div></div><span class="score-val">88</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:80%;background:#1D9E75"></div></div><span class="score-val">80</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────── REC 3 -->
+  <div class="rec-card" id="r3">
+    <div class="rec-header" onclick="toggle(&#39;r3&#39;)">
+      <span class="rec-num">03</span>
+      <div class="rec-title-block">
+        <div class="rec-title">Debezium CDC + Apache Flink + Delta Lake</div>
+        <div class="rec-subtitle">Near-real-time change capture with streaming unification</div>
+        <div class="rec-tags">
+          <span class="tag s3">S3</span><span class="tag es">Elasticsearch</span><span class="tag rmq">RabbitMQ</span><span class="tag rt">Near Real-time</span><span class="tag lake">Lakehouse</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">Use Change Data Capture (CDC) to stream every insert and update from source systems into Apache Flink. Flink joins and reconciles the streams in-flight, then writes unified records to Delta Lake tables on S3. This is the highest-freshness option — sub-minute data availability — while maintaining ACID guarantees for upserts. RabbitMQ plugs in directly as a Flink source connector.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">🐇</div><div class="af-label">RabbitMQ</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAECE7">🔄</div><div class="af-label">Debezium CDC</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">🌊</div><div class="af-label">Apache Flink</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EEEDFE">△</div><div class="af-label">Delta Lake</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">📊</div><div class="af-label">Spark / Databricks</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content">Flink's <strong>RabbitMQ source connector</strong> (flink-connector-rabbitmq) consumes messages natively. Debezium captures ES changes via the <strong>Elasticsearch connector</strong> (emits CDC events for each index operation). S3 new-object events flow via S3 event notifications → Kafka → Flink, or directly via Flink's S3 file-system source.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">Flink's <strong>stream-stream JOIN</strong> (with temporal tables) merges records from ES and S3 streams in real time on entity_id. A <strong>deduplication operator</strong> retains the latest version per key. Field-level precedence rules are encoded as Flink SQL transformation logic.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">Flink maintains <strong>per-key state</strong> with RocksDB backend. Updates are applied in-stream before writing to Delta. Delta Lake's <strong>MERGE INTO</strong> handles upserts on the sink side. Checkpointing every 60s ensures recovery without re-processing.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">Data freshness: <strong>30–90 seconds</strong> end-to-end. Dashboard queries against Delta's Parquet files via Databricks SQL return in 2–10s for pre-aggregated layers. Databricks <strong>Photon engine</strong> accelerates columnar scans. Z-ordering on hot columns cuts query time further.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">Sub-minute data freshness</span>
+            <span class="sb-item good">ACID upserts on Delta Lake</span>
+            <span class="sb-item good">Flink natively reads RabbitMQ</span>
+            <span class="sb-item good">Handles complex stream joins</span>
+            <span class="sb-item warn">Highest operational complexity</span>
+            <span class="sb-item warn">Flink + Debezium expertise needed</span>
+            <span class="sb-item warn">Databricks cost at scale</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>Flink on Kubernetes or AWS Kinesis Data Analytics</strong> scales per job parallelism. <strong>Databricks SQL:</strong> $0.22–$0.55/DBU depending on tier. Flink managed service (Ververica/Confluent) adds ~$800–2,000/month at mid-scale. <strong>Best fit:</strong> teams needing near-real-time freshness and willing to invest in streaming infrastructure.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:93%;background:#1D9E75"></div></div><span class="score-val">93</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:58%;background:#BA7517"></div></div><span class="score-val">58</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:38%;background:#E24B4A"></div></div><span class="score-val">38</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:90%;background:#1D9E75"></div></div><span class="score-val">90</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────── REC 4 -->
+  <div class="rec-card" id="r4">
+    <div class="rec-header" onclick="toggle(&#39;r4&#39;)">
+      <span class="rec-num">04</span>
+      <div class="rec-title-block">
+        <div class="rec-title">Airbyte + dbt + Snowflake / BigQuery</div>
+        <div class="rec-subtitle">Declarative ELT with a cloud data warehouse as the unified query layer</div>
+        <div class="rec-tags">
+          <span class="tag s3">S3</span><span class="tag es">Elasticsearch</span><span class="tag rmq">RabbitMQ</span><span class="tag lake">Warehouse</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">Airbyte provides pre-built connectors for S3, Elasticsearch, and (via custom connector) RabbitMQ to extract data and load it raw into Snowflake or BigQuery. dbt then transforms and reconciles overlapping fields in SQL, producing a unified reporting layer. This is the most team-friendly approach — SQL-centric, declarative, and easy to maintain without deep data-engineering expertise.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#E1F5EE">🪣</div><div class="af-label">S3</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">🔍</div><div class="af-label">Elasticsearch</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EEEDFE">✈</div><div class="af-label">Airbyte</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">❄</div><div class="af-label">Snowflake / BQ</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">🛠</div><div class="af-label">dbt models</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAECE7">📊</div><div class="af-label">Tableau / Looker</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content">Airbyte has native <strong>S3 and Elasticsearch connectors</strong>. For RabbitMQ, a <strong>custom Airbyte connector</strong> (Python SDK, ~1 day to build) consumes from a durable queue and writes to a staging table. Alternatively, a Lambda bridges RabbitMQ → S3 landing zone → Airbyte S3 connector.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">In dbt, write a <strong>staging model</strong> per source (stg_s3_events, stg_es_documents). A <strong>unification model</strong> joins them on entity_id with COALESCE logic to prefer one source's field values. dbt tests enforce referential integrity. <strong>Incremental materialization</strong> processes only new/changed rows.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">Airbyte's <strong>incremental cursor sync</strong> mode uses a watermark field (updated_at) to extract only new/changed records. In dbt, <strong>incremental models</strong> with unique_key handle upserts natively in Snowflake/BigQuery using MERGE. Full refreshes run nightly.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">Snowflake's <strong>automatic clustering</strong> and materialized views keep dashboard queries fast. BigQuery's <strong>BI Engine</strong> provides sub-second cache for common queries. dbt <strong>mart models</strong> pre-aggregate by tenant and time dimension. Expect 2–8s dashboard load for pre-aggregated marts.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">SQL-centric — accessible to all engineers</span>
+            <span class="sb-item good">dbt lineage, testing, documentation</span>
+            <span class="sb-item good">Airbyte 300+ connectors</span>
+            <span class="sb-item good">Fastest time-to-reporting</span>
+            <span class="sb-item warn">15–60 min minimum data freshness</span>
+            <span class="sb-item warn">Snowflake/BQ cost scales with usage</span>
+            <span class="sb-item warn">RabbitMQ connector is custom-built</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>Airbyte Cloud:</strong> ~$15–25/connector/month. <strong>Snowflake:</strong> $2–3/credit, auto-suspend warehouses cut idle cost. <strong>BigQuery:</strong> $6.25/TB query or flat-rate. <strong>dbt Cloud:</strong> $50–100/seat/month. Total mid-scale estimate: $500–1,500/month. <strong>Best fit:</strong> product teams wanting to move fast without deep infrastructure investment.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:78%;background:#1D9E75"></div></div><span class="score-val">78</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:65%;background:#BA7517"></div></div><span class="score-val">65</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:90%;background:#1D9E75"></div></div><span class="score-val">90</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:84%;background:#1D9E75"></div></div><span class="score-val">84</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────── REC 5 -->
+  <div class="rec-card" id="r5">
+    <div class="rec-header" onclick="toggle(&#39;r5&#39;)">
+      <span class="rec-num">05</span>
+      <div class="rec-title-block">
+        <div class="rec-title">ClickHouse + S3-backed MergeTree</div>
+        <div class="rec-subtitle">Column-store OLAP engine with native S3 integration and RabbitMQ ingestion</div>
+        <div class="rec-tags">
+          <span class="tag s3">S3</span><span class="tag es">Elasticsearch</span><span class="tag rmq">RabbitMQ</span><span class="tag rt">Near Real-time</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">ClickHouse is a purpose-built OLAP engine renowned for sub-second analytical queries at massive scale. It natively supports a RabbitMQ table engine (no custom connectors needed), reads directly from S3 via the S3 table function, and can replicate or query Elasticsearch indexes via JDBC. Unified data lands in a ReplacingMergeTree table that handles upserts automatically.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">🐇</div><div class="af-label">RabbitMQ</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#FAECE7">🖱</div><div class="af-label">CH RabbitMQ engine</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E1F5EE">🪣</div><div class="af-label">S3 reads</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">⚡</div><div class="af-label">ClickHouse MergeTree</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">📊</div><div class="af-label">Grafana / Superset</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content">ClickHouse has a built-in <strong>RabbitMQ table engine</strong> — declare a CREATE TABLE ... ENGINE=RabbitMQ and ClickHouse consumes messages directly. An <strong>S3 table function</strong> reads raw files from S3 for backfill or batch loads. For ES, a <strong>Materialized View</strong> on top of an HTTP table engine polls ES APIs periodically.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">Ingest both sources into a <strong>staging MergeTree</strong>. A <strong>ReplacingMergeTree</strong> destination table deduplicates on (entity_id, tenant_id) — always keeping the row with the highest version/timestamp. A <strong>MATERIALIZED VIEW</strong> fires on each insert to merge conflicting fields using IF() logic.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">ReplacingMergeTree handles <strong>upserts by version</strong> — insert the updated row and ClickHouse's background merge process resolves duplicates. For immediate consistency, use the <strong>FINAL</strong> keyword in SELECT. CollapsingMergeTree is an alternative for explicit update/delete signals.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">ClickHouse delivers <strong>sub-second to 3-second</strong> query times for most analytical queries, even against billions of rows. Column compression reduces storage by 5–10×. <strong>Materialized views</strong> pre-aggregate hot reporting queries to near-instant response — typically 50–200× faster than ES for analytics.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">Native RabbitMQ engine (zero glue code)</span>
+            <span class="sb-item good">Sub-second queries at petabyte scale</span>
+            <span class="sb-item good">Excellent compression ratios</span>
+            <span class="sb-item good">ClickHouse Cloud is fully managed</span>
+            <span class="sb-item warn">Not designed for OLTP / point lookups</span>
+            <span class="sb-item warn">ReplacingMergeTree dedup is eventual</span>
+            <span class="sb-item warn">Less ecosystem tooling than Snowflake</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>ClickHouse Cloud:</strong> $0.20–$0.36/hour per replica + storage ($0.023/GB). Auto-scaling available. Self-hosted on Kubernetes is very cost-effective. <strong>Mid-scale estimate:</strong> $400–900/month on ClickHouse Cloud. Column compression means ~5–10× less storage vs raw JSON. <strong>Best fit:</strong> high-concurrency SaaS dashboards needing the fastest possible query response.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:97%;background:#1D9E75"></div></div><span class="score-val">97</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:84%;background:#1D9E75"></div></div><span class="score-val">84</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:70%;background:#1D9E75"></div></div><span class="score-val">70</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:88%;background:#1D9E75"></div></div><span class="score-val">88</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────── REC 6 -->
+  <div class="rec-card" id="r6">
+    <div class="rec-header" onclick="toggle(&#39;r6&#39;)">
+      <span class="rec-num">06</span>
+      <div class="rec-title-block">
+        <div class="rec-title">Elastic Stack + Cross-cluster Search (ES-Native Unification)</div>
+        <div class="rec-subtitle">Extend Elasticsearch to become the unified reporting layer using native pipeline capabilities</div>
+        <div class="rec-tags">
+          <span class="tag es">Elasticsearch</span><span class="tag s3">S3</span><span class="tag rmq">RabbitMQ</span><span class="tag rt">Near Real-time</span>
+        </div>
+      </div>
+      <span class="rec-chevron">▼</span>
+    </div>
+    <div class="rec-body">
+      <p class="rec-desc">If the team wants to stay within the Elastic ecosystem, ES can be extended into the reporting layer itself. S3 data is ingested via the Elastic S3 integration (Filebeat/Logstash → ingest pipeline). RabbitMQ is consumed via Logstash's RabbitMQ input plugin. A unified index is maintained via ingest pipelines that handle field reconciliation. Kibana/Elastic Dashboards serve reporting. This minimizes architectural change while improving unification.</p>
+      <div class="arch-flow">
+        <div class="af-node"><div class="af-icon" style="background:#FAEEDA">🐇</div><div class="af-label">RabbitMQ</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EEEDFE">🔧</div><div class="af-label">Logstash</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E1F5EE">🪣</div><div class="af-label">S3 via Filebeat</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#E6F1FB">🔍</div><div class="af-label">ES Ingest Pipeline</div></div>
+        <span class="af-arrow">→</span>
+        <div class="af-node"><div class="af-icon" style="background:#EAF3DE">📊</div><div class="af-label">Kibana / Dashboards</div></div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-label">Ingestion &amp; RabbitMQ Role</div>
+          <div class="dc-content"><strong>Logstash RabbitMQ input plugin</strong> consumes messages and forwards to ES via the output plugin. <strong>Filebeat S3 module</strong> tails S3 buckets for new objects. Both pipelines feed a central <strong>ingest node pipeline</strong> that normalizes and routes documents to unified indices.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Overlapping Fields (ES ↔ S3)</div>
+          <div class="dc-content">An ES <strong>ingest pipeline script processor</strong> (Painless) merges documents on entity_id at write time. Use the <strong>update_by_query</strong> API with upsert semantics. An <strong>enrich processor</strong> looks up the existing ES document to apply field-level merge logic before indexing the unified record.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Incremental Updates</div>
+          <div class="dc-content">Elasticsearch's <strong>doc_as_upsert</strong> mode handles updates without overwrites. Use <strong>seq_no + primary_term</strong> for optimistic concurrency. For S3 changes, an <strong>S3 Event Notification → Lambda → Logstash</strong> pipeline ensures new/updated files are processed incrementally via a cursor on S3 object metadata.</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-label">Performance</div>
+          <div class="dc-content">ES performs well for <strong>search-style aggregations</strong> (cardinality, terms, date histograms). Use <strong>rollup indices</strong> and <strong>transform API</strong> for pre-aggregated summary dashboards. Kibana Lens dashboards typically respond in 1–5s on pre-aggregated rollups.</div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Strengths &amp; Trade-offs</div>
+          <div class="strength-bar">
+            <span class="sb-item good">Minimal architectural change</span>
+            <span class="sb-item good">Logstash natively reads RabbitMQ</span>
+            <span class="sb-item good">Kibana dashboards ready to use</span>
+            <span class="sb-item good">Fast iteration, familiar tooling</span>
+            <span class="sb-item warn">ES is not an OLAP engine — analytics at scale is costly</span>
+            <span class="sb-item warn">Complex aggregations hit memory limits</span>
+            <span class="sb-item warn">Long-term: expensive to scale for reporting</span>
+          </div>
+        </div>
+        <div class="detail-cell full">
+          <div class="dc-label">Cost &amp; Scalability</div>
+          <div class="dc-content"><strong>Elastic Cloud:</strong> $0.11–$0.22/hour per node (hot tier). Cold/frozen tiers with S3-backed searchable snapshots reduce storage cost by 80% for historical data. ES cluster costs scale with data volume, not query volume — at high data volumes this becomes expensive. <strong>Best fit:</strong> teams already heavily invested in Elastic, with moderate reporting complexity.</div>
+        </div>
+      </div>
+      <div class="score-section">
+        <div class="dc-label" style="margin-bottom:10px">Scores</div>
+        <div class="score-row"><span class="score-label">Performance</span><div class="score-track"><div class="score-fill" style="width:65%;background:#BA7517"></div></div><span class="score-val">65</span></div>
+        <div class="score-row"><span class="score-label">Cost efficiency</span><div class="score-track"><div class="score-fill" style="width:55%;background:#BA7517"></div></div><span class="score-val">55</span></div>
+        <div class="score-row"><span class="score-label">Operational ease</span><div class="score-track"><div class="score-fill" style="width:88%;background:#1D9E75"></div></div><span class="score-val">88</span></div>
+        <div class="score-row"><span class="score-label">SaaS scalability</span><div class="score-track"><div class="score-fill" style="width:62%;background:#BA7517"></div></div><span class="score-val">62</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decision guide -->
+  <div style="margin-top: 40px; padding-top: 24px; border-top: 0.5px solid var(--border);">
+    <div class="section-label">Decision guide</div>
+    <div class="decision-grid">
+      <div class="detail-cell"><div class="dc-label">Want fastest path to value?</div><div class="dc-content">→ <strong>Rec 04</strong> — Airbyte + dbt + Snowflake</div></div>
+      <div class="detail-cell"><div class="dc-label">Need sub-second queries?</div><div class="dc-content">→ <strong>Rec 05</strong> — ClickHouse</div></div>
+      <div class="detail-cell"><div class="dc-label">Already on AWS, minimal ops?</div><div class="dc-content">→ <strong>Rec 02</strong> — Glue + Athena</div></div>
+      <div class="detail-cell"><div class="dc-label">Need near-real-time (&lt;1 min)?</div><div class="dc-content">→ <strong>Rec 03</strong> — Flink + Delta Lake</div></div>
+      <div class="detail-cell"><div class="dc-label">Long-term open-standard lakehouse?</div><div class="dc-content">→ <strong>Rec 01</strong> — Kafka + Iceberg</div></div>
+      <div class="detail-cell"><div class="dc-label">Minimal change from current stack?</div><div class="dc-content">→ <strong>Rec 06</strong> — Elastic-native</div></div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <span>Unified Reporting Architecture · 6 Recommendations</span>
+    <span>S3 · Elasticsearch · RabbitMQ</span>
+  </footer>
+
+</main>
+
+<script>
+function toggle(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+</script>
+
+</body></html>
