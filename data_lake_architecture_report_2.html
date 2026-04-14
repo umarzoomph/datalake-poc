@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Lake Architecture — Unified Reporting Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f1117;
+  --ink-2: #3a3d4a;
+  --ink-3: #6b6f7e;
+  --ink-4: #9ea3b5;
+  --surface: #ffffff;
+  --surface-2: #f5f6f9;
+  --surface-3: #eceef4;
+  --accent: #1a4fff;
+  --accent-2: #e8eeff;
+  --accent-3: #c8d4ff;
+  --teal: #0b7c6b;
+  --teal-2: #e0f4f1;
+  --amber: #92520a;
+  --amber-2: #fef3e2;
+  --coral: #b83222;
+  --coral-2: #fdecea;
+  --purple: #5b38d6;
+  --purple-2: #eeebff;
+  --green: #1a6e3c;
+  --green-2: #e6f7ed;
+  --border: #e2e5ef;
+  --border-2: #cdd1e0;
+  --radius: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --serif: 'DM Serif Display', serif;
+  --shadow: 0 1px 3px rgba(15,17,23,.06), 0 4px 16px rgba(15,17,23,.06);
+  --shadow-lg: 0 2px 8px rgba(15,17,23,.08), 0 12px 40px rgba(15,17,23,.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+}
+
+body {
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NAVIGATION ── */
+nav.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+.nav-brand {
+  font-family: var(--serif);
+  font-size: 17px;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -.01em;
+}
+.nav-links {
+  display: flex;
+  gap: 0;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  transition: color .15s, background .15s;
+}
+.nav-links a:hover { color: var(--accent); background: var(--accent-2); }
+.nav-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+}
+
+/* ── HERO ── */
+.hero {
+  background: var(--ink);
+  color: #fff;
+  padding: 80px 2rem 72px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 40px,
+    rgba(255,255,255,.018) 40px,
+    rgba(255,255,255,.018) 41px
+  );
+}
+.hero-inner { max-width: 860px; margin: 0 auto; position: relative; }
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: rgba(255,255,255,.3);
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(32px, 5vw, 52px);
+  line-height: 1.12;
+  letter-spacing: -.02em;
+  margin-bottom: 24px;
+  color: #fff;
+}
+.hero h1 em {
+  font-style: italic;
+  color: rgba(255,255,255,.65);
+}
+.hero-desc {
+  font-size: 17px;
+  font-weight: 300;
+  color: rgba(255,255,255,.7);
+  max-width: 620px;
+  line-height: 1.65;
+  margin-bottom: 36px;
+}
+.hero-meta {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hero-stat-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: #fff;
+}
+.hero-stat-label {
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.hero-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.hero-chip {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.2);
+  color: rgba(255,255,255,.75);
+}
+.hero-chip.fav {
+  background: rgba(255,200,80,.12);
+  border-color: rgba(255,200,80,.35);
+  color: #ffc850;
+}
+
+/* ── LAYOUT ── */
+.container { max-width: 1060px; margin: 0 auto; padding: 0 2rem; }
+.section { padding: 72px 0; scroll-margin-top: 72px; }
+.section + .section { border-top: 1px solid var(--border); }
+.deep-dive { scroll-margin-top: 72px; }
+.section-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3.5vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+.section-sub {
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--ink-3);
+  max-width: 640px;
+  margin-bottom: 48px;
+  line-height: 1.65;
+}
+
+/* ── CALLOUT BOX ── */
+.callout {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 16px 20px;
+  margin: 28px 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+.callout.warning { border-left-color: var(--amber); background: var(--amber-2); }
+.callout.success { border-left-color: var(--teal); background: var(--teal-2); }
+.callout strong { font-weight: 600; color: var(--ink); }
+
+/* ── DATA MODEL ── */
+.data-model-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  align-items: center;
+  margin: 40px 0;
+}
+.dm-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.dm-card-header {
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dm-card-header.blue { background: #dbeafd; color: #0c3d8a; }
+.dm-card-header.purple { background: #ede9ff; color: #3d2499; }
+.dm-card-body { padding: 14px 18px; }
+.dm-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.dm-field.key { background: var(--accent-2); font-weight: 600; color: var(--accent); font-family: var(--mono); }
+.dm-field.fk { background: var(--purple-2); font-weight: 600; color: var(--purple); font-family: var(--mono); }
+.dm-field.normal { background: var(--surface-2); color: var(--ink-2); font-family: var(--mono); font-size: 12px; }
+.dm-field .tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  margin-left: auto;
+}
+.tag-pk { background: var(--accent); color: #fff; }
+.tag-fk { background: var(--purple); color: #fff; }
+.tag-large { background: var(--amber); color: #fff; }
+.dm-join {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+}
+.dm-join-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  background: var(--amber-2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #f5d799;
+  white-space: nowrap;
+}
+.dm-join-line {
+  width: 2px;
+  height: 40px;
+  background: repeating-linear-gradient(to bottom, var(--amber) 0, var(--amber) 4px, transparent 4px, transparent 8px);
+}
+
+/* ── ARCH CARDS ── */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+}
+.arch-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: box-shadow .2s, transform .2s;
+}
+.arch-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.arch-card.recommended { border-color: var(--accent-3); border-width: 2px; }
+.arch-card-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: .1em;
+  margin-bottom: 10px;
+}
+.arch-card-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+.arch-card-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-bottom: 18px;
+}
+.arch-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+}
+.badge-green { background: var(--green-2); color: var(--green); }
+.badge-amber { background: var(--amber-2); color: var(--amber); }
+.badge-red { background: var(--coral-2); color: var(--coral); }
+.badge-blue { background: var(--accent-2); color: var(--accent); }
+.badge-purple { background: var(--purple-2); color: var(--purple); }
+.badge-gray { background: var(--surface-3); color: var(--ink-2); }
+.arch-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.arch-metric {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.arch-metric-label { font-size: 11px; color: var(--ink-4); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.arch-metric-val { font-size: 14px; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+.arch-pros-cons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.arch-pros h4, .arch-cons h4 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.arch-pros h4 { color: var(--teal); }
+.arch-cons h4 { color: var(--coral); }
+.arch-pros li, .arch-cons li {
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 3px 0;
+  padding-left: 14px;
+  position: relative;
+  list-style: none;
+  line-height: 1.5;
+}
+.arch-pros li::before { content: '+'; position: absolute; left: 0; color: var(--teal); font-weight: 700; }
+.arch-cons li::before { content: '−'; position: absolute; left: 0; color: var(--coral); font-weight: 700; }
+
+/* ── KPI BARS ── */
+.kpi-section { margin: 40px 0; }
+.kpi-group { margin-bottom: 36px; }
+.kpi-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 52px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.kpi-label { font-size: 12px; color: var(--ink-2); font-weight: 500; text-align: right; }
+.kpi-track { height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; }
+.kpi-fill { height: 100%; border-radius: 4px; }
+.kpi-val { font-size: 12px; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+
+/* ── COMPARISON TABLE ── */
+.table-wrap { overflow-x: auto; margin: 40px 0; border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+thead tr { background: var(--surface-2); }
+th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+th.fav { background: #fef9ec; color: var(--amber); }
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-2);
+  vertical-align: top;
+  line-height: 1.45;
+}
+td.row-label {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  font-size: 12px;
+  white-space: nowrap;
+  width: 170px;
+}
+td.section-row {
+  background: var(--ink);
+  color: rgba(255,255,255,.55);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+}
+td.fav-col { background: #fffdf5; }
+tr:last-child td { border-bottom: none; }
+.dot-row { display: flex; gap: 3px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; }
+.dot-on { background: var(--teal); }
+.dot-half { background: var(--amber); }
+.dot-off { background: var(--border-2); }
+
+/* ── CODE BLOCKS ── */
+.code-section { margin: 40px 0; }
+.code-block-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #1e2130;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.code-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: rgba(255,255,255,.6);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.code-title::before {
+  content: '';
+  display: inline-flex;
+  gap: 4px;
+}
+.code-dots { display: flex; gap: 5px; }
+.code-dot { width: 10px; height: 10px; border-radius: 50%; }
+.code-dot:nth-child(1) { background: #ff5f56; }
+.code-dot:nth-child(2) { background: #ffbd2e; }
+.code-dot:nth-child(3) { background: #27c93f; }
+.code-lang {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,.35);
+  background: rgba(255,255,255,.07);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+pre {
+  background: #141622;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 0;
+  line-height: 1.65;
+}
+code {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #c9d1e0;
+}
+.kw { color: #7eb8ff; }
+.str { color: #a8e6a3; }
+.cm { color: #5a6a8a; font-style: italic; }
+.fn { color: #ffcc7a; }
+.num { color: #f0a070; }
+.var { color: #e0c0ff; }
+.op { color: #7eb8ff; }
+
+/* ── DEEP DIVE SECTIONS ── */
+.deep-dive {
+  background: var(--surface-2);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  margin: 32px 0;
+  border: 1px solid var(--border);
+}
+.deep-dive-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.deep-dive-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.deep-dive-desc {
+  font-size: 14px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  max-width: 580px;
+  line-height: 1.6;
+}
+
+/* ── FLOW STEPS ── */
+.flow-steps { margin: 24px 0; }
+.flow-step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+.flow-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.flow-step-text {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.flow-step-text strong { color: var(--ink); font-weight: 600; }
+
+/* ── STACK CHIPS ── */
+.stack-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.stack-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.stack-chip-cat {
+  font-size: 10px;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  display: block;
+  margin-bottom: 1px;
+}
+.stack-chip-name { font-weight: 600; color: var(--ink); }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--ink);
+  color: rgba(255,255,255,.5);
+  padding: 40px 2rem;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.8;
+}
+footer strong { color: rgba(255,255,255,.8); }
+
+/* ── TOC ── */
+.toc {
+  position: static;
+  display: grid;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin: 48px 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 32px;
+  overflow: visible;
+  z-index: auto;
+}
+.toc-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  grid-column: 1 / -1;
+  margin-bottom: 14px;
+}
+.toc a {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: color .15s;
+}
+.toc a:hover { color: var(--accent); }
+.toc-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-4);
+  width: 22px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .arch-grid { grid-template-columns: 1fr; }
+  .arch-pros-cons { grid-template-columns: 1fr; }
+  .toc { grid-template-columns: 1fr; }
+  .data-model-grid { grid-template-columns: 1fr; }
+  .dm-join { display: none; }
+  nav.site-nav .nav-links { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="site-nav">
+  <a class="nav-brand" href="#">Data Lake Architecture</a>
+  <ul class="nav-links">
+    <li><a href="#data-model">Data Model</a></li>
+    <li><a href="#architectures">Architectures</a></li>
+    <li><a href="#comparison">Comparison</a></li>
+    <li><a href="#deep-dives">Deep Dives</a></li>
+    <li><a href="#implementation">Implementation</a></li>
+  </ul>
+  <span class="nav-badge">Manager Brief</span>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <p class="hero-eyebrow">Principal Architecture Report</p>
+    <h1>Cost-Effective Data Lake<br><em>for Unified Reporting</em></h1>
+    <p class="hero-desc">A production-ready architecture guide consolidating Elasticsearch, S3 enrichment, and RabbitMQ into a single analytics layer. Six platform options evaluated with full implementation details.</p>
+    <div class="hero-meta">
+      <div class="hero-stat"><span class="hero-stat-val">6</span><span class="hero-stat-label">Platforms evaluated</span></div>
+      <div class="hero-stat"><span class="hero-stat-val">&lt;30s</span><span class="hero-stat-label">Dashboard target</span></div>
+      <div class="hero-stat"><span class="hero-stat-val">$10–40</span><span class="hero-stat-label">Min. monthly cost</span></div>
+      <div class="hero-stat"><span class="hero-stat-val">~70%</span><span class="hero-stat-label">ES data share</span></div>
+    </div>
+    <div class="hero-chips">
+      <span class="hero-chip">Elasticsearch → primary source</span>
+      <span class="hero-chip">S3 → enrichment sidecar (es_ref_id)</span>
+      <span class="hero-chip">RabbitMQ → event triggers</span>
+      <span class="hero-chip">Append-only + updates</span>
+      <span class="hero-chip fav">★ Snowflake</span>
+      <span class="hero-chip fav">★ Databricks</span>
+      <span class="hero-chip fav">★ ClickHouse</span>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <p class="toc-title">Contents</p>
+    <a href="#data-model"><span class="toc-num">01</span>Corrected data model</a>
+    <a href="#architectures"><span class="toc-num">02</span>Four architecture options</a>
+    <a href="#kpi"><span class="toc-num">03</span>KPI &amp; performance charts</a>
+    <a href="#comparison"><span class="toc-num">04</span>6-platform comparison table</a>
+    <a href="#snowflake-dive"><span class="toc-num">05</span>Deep dive — Snowflake + Snowpipe</a>
+    <a href="#clickhouse-dive"><span class="toc-num">06</span>Deep dive — ClickHouse + ReplacingMergeTree</a>
+    <a href="#databricks-dive"><span class="toc-num">07</span>Deep dive — Databricks + Delta Lake</a>
+    <a href="#implementation"><span class="toc-num">08</span>Implementation code</a>
+    <a href="#decision"><span class="toc-num">09</span>Decision guide</a>
+  </div>
+
+  <!-- DATA MODEL -->
+  <section class="section" id="data-model">
+    <p class="section-label">Critical clarification</p>
+    <h2 class="section-title">The corrected data model</h2>
+    <p class="section-sub">S3 is not a peer data source. It carries large JSON enrichment payloads that reference Elasticsearch documents via a unique foreign key — <code style="font-family:var(--mono);font-size:13px;background:var(--surface-3);padding:1px 5px;border-radius:4px">es_ref_id</code>. This changes the entire join and reconciliation strategy.</p>
+
+    <div class="data-model-grid">
+      <div class="dm-card">
+        <div class="dm-card-header blue">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="#185FA5" stroke-width="1.5"/><line x1="4" y1="5.5" x2="12" y2="5.5" stroke="#185FA5" stroke-width="1.2"/><line x1="4" y1="8.5" x2="10" y2="8.5" stroke="#185FA5" stroke-width="1.2"/><line x1="4" y1="11.5" x2="8" y2="11.5" stroke="#185FA5" stroke-width="1.2"/></svg>
+          Elasticsearch document — canonical record
+        </div>
+        <div class="dm-card-body">
+          <div class="dm-field key">entity_id <span class="tag tag-pk">PK</span></div>
+          <div class="dm-field normal">tenant_id</div>
+          <div class="dm-field normal">status</div>
+          <div class="dm-field normal">created_at</div>
+          <div class="dm-field normal">updated_at — watermark key</div>
+          <div class="dm-field normal">raw_json — full _source</div>
+        </div>
+      </div>
+
+      <div class="dm-join">
+        <div class="dm-join-line"></div>
+        <div class="dm-join-label">JOIN KEY</div>
+        <div class="dm-join-line"></div>
+      </div>
+
+      <div class="dm-card">
+        <div class="dm-card-header purple">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 3h10a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#534AB7" stroke-width="1.5"/><path d="M5 7h6M5 10h4" stroke="#534AB7" stroke-width="1.2" stroke-linecap="round"/></svg>
+          S3 large JSON — enrichment sidecar
+        </div>
+        <div class="dm-card-body">
+          <div class="dm-field fk">es_ref_id → entity_id <span class="tag tag-fk">FK</span></div>
+          <div class="dm-field normal">tenant_id</div>
+          <div class="dm-field normal">enrichment_type</div>
+          <div class="dm-field normal">model_version</div>
+          <div class="dm-field normal">enrichment_at — version key</div>
+          <div class="dm-field normal">enrichment_json <span class="tag tag-large">100KB–10MB</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Key design principle:</strong> The join is always <code style="font-family:var(--mono);font-size:12px">es_raw LEFT JOIN s3_enrichment ON entity_id = es_ref_id</code> — never a MERGE or UNION. An S3 payload arriving before its ES document is an <strong>orphan</strong> that needs monitoring, not an error. Every platform handles this as a LEFT JOIN null.
+    </div>
+
+    <div class="callout warning">
+      <strong>Orphan enrichment risk:</strong> When an S3 enrichment arrives before the ES document has been indexed (race condition common in async AI pipelines), the enrichment row has no parent. Always run orphan coverage monitoring queries to detect this pattern. Databricks Delta MERGE is the only platform that handles orphan reconciliation automatically via <code style="font-family:var(--mono);font-size:12px">WHEN NOT MATCHED</code>.
+    </div>
+  </section>
+
+  <!-- ARCHITECTURES -->
+  <section class="section" id="architectures">
+    <p class="section-label">Architecture options</p>
+    <h2 class="section-title">Four production-grade approaches</h2>
+    <p class="section-sub">Each architecture represents a real-world pattern. Start with Arch 1 and migrate only when usage data justifies the upgrade.</p>
+
+    <div class="arch-grid">
+
+      <div class="arch-card recommended">
+        <p class="arch-card-num">ARCH 01 — RECOMMENDED</p>
+        <h3 class="arch-card-title">S3 Lakehouse + Athena</h3>
+        <p class="arch-card-sub">Serverless, lowest cost, AWS-native. ES → Lambda → S3 Parquet → Athena. S3 enrichment joins at query time.</p>
+        <div class="arch-badges">
+          <span class="badge badge-green">Lowest cost</span>
+          <span class="badge badge-blue">Serverless</span>
+          <span class="badge badge-green">Default choice</span>
+        </div>
+        <div class="arch-metrics">
+          <div class="arch-metric"><p class="arch-metric-label">Monthly cost</p><p class="arch-metric-val">$10–40</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Query latency</p><p class="arch-metric-val">&lt;15s</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Ingestion lag</p><p class="arch-metric-val">5–30 min</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Setup time</p><p class="arch-metric-val">1–2 days</p></div>
+        </div>
+        <div class="arch-pros-cons">
+          <ul class="arch-pros"><h4>Strengths</h4>
+            <li>Near-zero idle cost</li>
+            <li>Infinite S3 scalability</li>
+            <li>Schema evolution via Glue</li>
+            <li>No cluster to manage</li>
+          </ul>
+          <ul class="arch-cons"><h4>Trade-offs</h4>
+            <li>Athena cold query 5–15s</li>
+            <li>No real-time capability</li>
+            <li>20 concurrent query limit</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <p class="arch-card-num">ARCH 02</p>
+        <h3 class="arch-card-title">Serverless Warehouse (BigQuery)</h3>
+        <p class="arch-card-sub">GCP BigQuery + Cloud Run. Near real-time via Storage Write API. Best for GCP-first teams.</p>
+        <div class="arch-badges">
+          <span class="badge badge-blue">Fast queries</span>
+          <span class="badge badge-amber">Medium cost</span>
+        </div>
+        <div class="arch-metrics">
+          <div class="arch-metric"><p class="arch-metric-label">Monthly cost</p><p class="arch-metric-val">$50–150</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Query latency</p><p class="arch-metric-val">&lt;8s</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Ingestion lag</p><p class="arch-metric-val">2–15 min</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Setup time</p><p class="arch-metric-val">2–3 days</p></div>
+        </div>
+        <div class="arch-pros-cons">
+          <ul class="arch-pros"><h4>Strengths</h4>
+            <li>Auto-detect schema</li>
+            <li>BI Engine sub-1s cache</li>
+            <li>ACID MERGE natively</li>
+          </ul>
+          <ul class="arch-cons"><h4>Trade-offs</h4>
+            <li>Cross-cloud egress cost</li>
+            <li>AWS → GCP complexity</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <p class="arch-card-num">ARCH 03</p>
+        <h3 class="arch-card-title">Managed Warehouse (Snowflake / Redshift)</h3>
+        <p class="arch-card-sub">Full enterprise warehouse with dbt, Snowpipe, Kinesis Firehose. Best for governance-heavy teams.</p>
+        <div class="arch-badges">
+          <span class="badge badge-amber">Medium–high cost</span>
+          <span class="badge badge-blue">Enterprise-grade</span>
+        </div>
+        <div class="arch-metrics">
+          <div class="arch-metric"><p class="arch-metric-label">Monthly cost</p><p class="arch-metric-val">$200–600</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Query latency</p><p class="arch-metric-val">&lt;5s</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Ingestion lag</p><p class="arch-metric-val">1–10 min</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Setup time</p><p class="arch-metric-val">1–2 weeks</p></div>
+        </div>
+        <div class="arch-pros-cons">
+          <ul class="arch-pros"><h4>Strengths</h4>
+            <li>Best SQL compatibility</li>
+            <li>dbt lineage + testing</li>
+            <li>Row-level security</li>
+          </ul>
+          <ul class="arch-cons"><h4>Trade-offs</h4>
+            <li>Highest cost baseline</li>
+            <li>Credit burn on bad queries</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="arch-card">
+        <p class="arch-card-num">ARCH 04</p>
+        <h3 class="arch-card-title">Hybrid Stream (Kafka + Iceberg)</h3>
+        <p class="arch-card-sub">Confluent Cloud + Apache Iceberg + Flink. Sub-minute freshness. Only justified by hard real-time SLA.</p>
+        <div class="arch-badges">
+          <span class="badge badge-red">Higher cost</span>
+          <span class="badge badge-purple">Real-time</span>
+        </div>
+        <div class="arch-metrics">
+          <div class="arch-metric"><p class="arch-metric-label">Monthly cost</p><p class="arch-metric-val">$400–1,200</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Query latency</p><p class="arch-metric-val">&lt;10s</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Ingestion lag</p><p class="arch-metric-val">&lt;60s</p></div>
+          <div class="arch-metric"><p class="arch-metric-label">Setup time</p><p class="arch-metric-val">3–6 weeks</p></div>
+        </div>
+        <div class="arch-pros-cons">
+          <ul class="arch-pros"><h4>Strengths</h4>
+            <li>Sub-minute freshness</li>
+            <li>ACID + time travel</li>
+            <li>Open format, no lock-in</li>
+          </ul>
+          <ul class="arch-cons"><h4>Trade-offs</h4>
+            <li>Kafka ~$200–400/mo alone</li>
+            <li>Flink ops complexity</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- KPI -->
+  <section class="section" id="kpi">
+    <p class="section-label">Performance visualizations</p>
+    <h2 class="section-title">KPI comparisons across architectures</h2>
+    <p class="section-sub">All four architecture options measured against the key metrics that matter for production SaaS reporting.</p>
+
+    <div class="kpi-section">
+      <div class="kpi-group">
+        <p class="kpi-group-title">Query latency — lower is better (typical dashboard, 50M rows)</p>
+        <div class="kpi-row"><span class="kpi-label">Arch 1 — Athena</span><div class="kpi-track"><div class="kpi-fill" style="width:53%;background:#1D9E75"></div></div><span class="kpi-val">~8s</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 2 — BigQuery</span><div class="kpi-track"><div class="kpi-fill" style="width:27%;background:#1D9E75"></div></div><span class="kpi-val">~4s</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 3 — Warehouse</span><div class="kpi-track"><div class="kpi-fill" style="width:20%;background:#1D9E75"></div></div><span class="kpi-val">~3s</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 4 — Iceberg</span><div class="kpi-track"><div class="kpi-fill" style="width:40%;background:#1D9E75"></div></div><span class="kpi-val">~6s</span></div>
+      </div>
+
+      <div class="kpi-group">
+        <p class="kpi-group-title">Monthly cost estimate — lower is better (50M records/month)</p>
+        <div class="kpi-row"><span class="kpi-label">Arch 1 — Athena</span><div class="kpi-track"><div class="kpi-fill" style="width:3%;background:#0F6E56"></div></div><span class="kpi-val">~$25</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 2 — BigQuery</span><div class="kpi-track"><div class="kpi-fill" style="width:12%;background:#92520a"></div></div><span class="kpi-val">~$100</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 3 — Warehouse</span><div class="kpi-track"><div class="kpi-fill" style="width:44%;background:#92520a"></div></div><span class="kpi-val">~$350</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 4 — Streaming</span><div class="kpi-track"><div class="kpi-fill" style="width:87%;background:#b83222"></div></div><span class="kpi-val">~$700</span></div>
+      </div>
+
+      <div class="kpi-group">
+        <p class="kpi-group-title">Data freshness — lower is better (minutes to dashboard)</p>
+        <div class="kpi-row"><span class="kpi-label">Arch 1 — Athena</span><div class="kpi-track"><div class="kpi-fill" style="width:75%;background:#92520a"></div></div><span class="kpi-val">~15 min</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 2 — BigQuery</span><div class="kpi-track"><div class="kpi-fill" style="width:35%;background:#1D9E75"></div></div><span class="kpi-val">~7 min</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 3 — Warehouse</span><div class="kpi-track"><div class="kpi-fill" style="width:20%;background:#1D9E75"></div></div><span class="kpi-val">~4 min</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 4 — Streaming</span><div class="kpi-track"><div class="kpi-fill" style="width:4%;background:#1D9E75"></div></div><span class="kpi-val">&lt;1 min</span></div>
+      </div>
+
+      <div class="kpi-group">
+        <p class="kpi-group-title">Cost per 1M records processed</p>
+        <div class="kpi-row"><span class="kpi-label">Arch 1 — Athena</span><div class="kpi-track"><div class="kpi-fill" style="width:2%;background:#0F6E56"></div></div><span class="kpi-val">~$0.15</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 2 — BigQuery</span><div class="kpi-track"><div class="kpi-fill" style="width:12%;background:#1D9E75"></div></div><span class="kpi-val">~$0.80</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 3 — Warehouse</span><div class="kpi-track"><div class="kpi-fill" style="width:50%;background:#92520a"></div></div><span class="kpi-val">~$3.20</span></div>
+        <div class="kpi-row"><span class="kpi-label">Arch 4 — Streaming</span><div class="kpi-track"><div class="kpi-fill" style="width:100%;background:#b83222"></div></div><span class="kpi-val">~$6.50</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARISON TABLE -->
+  <section class="section" id="comparison">
+    <p class="section-label">Side-by-side comparison</p>
+    <h2 class="section-title">All 6 platforms evaluated</h2>
+    <p class="section-sub">Incorporates the corrected data model: ES as primary source, S3 as enrichment sidecar joined via es_ref_id foreign key.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:165px">Feature</th>
+            <th class="fav">Snowflake ★</th>
+            <th class="fav">Databricks ★</th>
+            <th class="fav">ClickHouse ★</th>
+            <th>S3 + Athena</th>
+            <th>Redshift Serverless</th>
+            <th>Iceberg + Starburst</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="section-row" colspan="7">Overview</td></tr>
+          <tr>
+            <td class="row-label">Primary role</td>
+            <td class="fav-col">Managed warehouse + sharing</td>
+            <td class="fav-col">Lakehouse + ML platform</td>
+            <td class="fav-col">Real-time OLAP engine</td>
+            <td>Serverless lake + query</td>
+            <td>AWS-native warehouse</td>
+            <td>Open format + federation</td>
+          </tr>
+          <tr>
+            <td class="row-label">Est. monthly cost</td>
+            <td class="fav-col"><span class="badge badge-amber">$200–600</span></td>
+            <td class="fav-col"><span class="badge badge-amber">$300–900</span></td>
+            <td class="fav-col"><span class="badge badge-green">$80–250</span></td>
+            <td><span class="badge badge-green">$10–40</span></td>
+            <td><span class="badge badge-amber">$150–450</span></td>
+            <td><span class="badge badge-amber">$100–600</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Setup time</td>
+            <td class="fav-col">1–2 days</td>
+            <td class="fav-col">2–4 days</td>
+            <td class="fav-col">1–2 days</td>
+            <td>1–2 days</td>
+            <td>2–3 days</td>
+            <td>1–3 weeks</td>
+          </tr>
+          <tr>
+            <td class="row-label">Vendor lock-in</td>
+            <td class="fav-col"><span class="badge badge-amber">Medium</span></td>
+            <td class="fav-col"><span class="badge badge-amber">Medium</span></td>
+            <td class="fav-col"><span class="badge badge-green">Low</span></td>
+            <td><span class="badge badge-amber">Low–med</span></td>
+            <td><span class="badge badge-amber">Medium</span></td>
+            <td><span class="badge badge-green">Very low</span></td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">ES as primary source</td></tr>
+          <tr>
+            <td class="row-label">ES ingest method</td>
+            <td class="fav-col">Lambda scroll → S3 → Snowpipe</td>
+            <td class="fav-col">ES Spark connector + Auto Loader</td>
+            <td class="fav-col">Lambda → S3Queue → MV</td>
+            <td>Lambda → S3 Parquet → Athena</td>
+            <td>Lambda → S3 → COPY</td>
+            <td>Lambda → Iceberg MERGE</td>
+          </tr>
+          <tr>
+            <td class="row-label">Watermark / incremental</td>
+            <td class="fav-col"><span class="badge badge-green">SSM param</span></td>
+            <td class="fav-col"><span class="badge badge-green">Delta checkpoint</span></td>
+            <td class="fav-col"><span class="badge badge-green">SSM / DynamoDB</span></td>
+            <td><span class="badge badge-green">SSM param</span></td>
+            <td><span class="badge badge-green">SSM param</span></td>
+            <td><span class="badge badge-green">Iceberg snapshot</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">ES → table latency</td>
+            <td class="fav-col">30s–2 min</td>
+            <td class="fav-col">30s–3 min</td>
+            <td class="fav-col"><span class="badge badge-green">&lt;30s</span></td>
+            <td>5–30 min</td>
+            <td>1–5 min</td>
+            <td>1–5 min</td>
+          </tr>
+          <tr>
+            <td class="row-label">Schema evolution</td>
+            <td class="fav-col"><span class="badge badge-green">VARIANT column</span></td>
+            <td class="fav-col"><span class="badge badge-green">Delta evolution</span></td>
+            <td class="fav-col"><span class="badge badge-amber">String JSON col</span></td>
+            <td><span class="badge badge-amber">Glue crawler</span></td>
+            <td><span class="badge badge-green">Spectrum + Glue</span></td>
+            <td><span class="badge badge-green">Iceberg native</span></td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">S3 enrichment sidecar (es_ref_id → entity_id join)</td></tr>
+          <tr>
+            <td class="row-label">S3 enrichment ingest</td>
+            <td class="fav-col">S3 event → Lambda → Snowpipe</td>
+            <td class="fav-col">S3 event → Auto Loader → Delta</td>
+            <td class="fav-col">S3 event → Lambda → S3Queue</td>
+            <td>S3 event → Lambda → Parquet</td>
+            <td>S3 event → Lambda → COPY</td>
+            <td>S3 event → Lambda → Iceberg</td>
+          </tr>
+          <tr>
+            <td class="row-label">es_ref_id join</td>
+            <td class="fav-col"><span class="badge badge-green">Native SQL JOIN</span></td>
+            <td class="fav-col"><span class="badge badge-green">Spark / Delta JOIN</span></td>
+            <td class="fav-col"><span class="badge badge-green">LEFT JOIN FINAL + MV</span></td>
+            <td><span class="badge badge-green">Athena SQL JOIN</span></td>
+            <td><span class="badge badge-green">Redshift JOIN</span></td>
+            <td><span class="badge badge-green">Trino federated JOIN</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Orphan enrichments</td>
+            <td class="fav-col"><span class="badge badge-amber">NULL check query</span></td>
+            <td class="fav-col"><span class="badge badge-green">Delta MERGE handles it</span></td>
+            <td class="fav-col"><span class="badge badge-amber">LEFT JOIN null row</span></td>
+            <td><span class="badge badge-amber">LEFT JOIN null row</span></td>
+            <td><span class="badge badge-amber">LEFT JOIN null row</span></td>
+            <td><span class="badge badge-amber">LEFT JOIN null row</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Large JSON (&gt;1MB)</td>
+            <td class="fav-col"><span class="badge badge-green">VARIANT — lazy parse</span></td>
+            <td class="fav-col"><span class="badge badge-green">STRING + from_json()</span></td>
+            <td class="fav-col"><span class="badge badge-green">String + JSONExtract</span></td>
+            <td><span class="badge badge-amber">Slow on large JSON</span></td>
+            <td><span class="badge badge-amber">SUPER type — limited</span></td>
+            <td><span class="badge badge-green">json_parse()</span></td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">Deduplication (append-only with updates)</td></tr>
+          <tr>
+            <td class="row-label">Dedup strategy</td>
+            <td class="fav-col">MERGE INTO on entity_id</td>
+            <td class="fav-col">Delta MERGE WHEN MATCHED</td>
+            <td class="fav-col">ReplacingMergeTree(updated_at)</td>
+            <td>dbt incremental MERGE</td>
+            <td>Redshift MERGE / dbt</td>
+            <td>Iceberg MERGE INTO</td>
+          </tr>
+          <tr>
+            <td class="row-label">Dedup guarantee</td>
+            <td class="fav-col"><span class="badge badge-green">Immediate on MERGE</span></td>
+            <td class="fav-col"><span class="badge badge-green">Immediate — ACID</span></td>
+            <td class="fav-col"><span class="badge badge-amber">Eventual (background)</span></td>
+            <td><span class="badge badge-amber">On dbt schedule</span></td>
+            <td><span class="badge badge-green">Immediate on MERGE</span></td>
+            <td><span class="badge badge-green">Immediate — ACID</span></td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">Query performance</td></tr>
+          <tr>
+            <td class="row-label">Dashboard latency</td>
+            <td class="fav-col"><span class="badge badge-green">1–5s</span></td>
+            <td class="fav-col"><span class="badge badge-green">2–6s</span></td>
+            <td class="fav-col"><span class="badge badge-green">&lt;1s sub-second</span></td>
+            <td><span class="badge badge-amber">5–15s</span></td>
+            <td><span class="badge badge-green">2–6s</span></td>
+            <td><span class="badge badge-amber">3–10s</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Concurrent users</td>
+            <td class="fav-col">100+ (multi-cluster)</td>
+            <td class="fav-col">50+ (SQL serverless)</td>
+            <td class="fav-col">200+ (native)</td>
+            <td>20 (Athena limit)</td>
+            <td>50+ (auto-scale)</td>
+            <td>50+ (workers)</td>
+          </tr>
+          <tr>
+            <td class="row-label">ES + S3 JOIN perf</td>
+            <td class="fav-col"><span class="badge badge-green">Excellent</span></td>
+            <td class="fav-col"><span class="badge badge-green">Excellent</span></td>
+            <td class="fav-col"><span class="badge badge-green">Excellent via MV</span></td>
+            <td><span class="badge badge-amber">Fair — scan cost</span></td>
+            <td><span class="badge badge-green">Good</span></td>
+            <td><span class="badge badge-amber">Fair — overhead</span></td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">Operations</td></tr>
+          <tr>
+            <td class="row-label">dbt support</td>
+            <td class="fav-col"><span class="badge badge-green">Native (dbt-snowflake)</span></td>
+            <td class="fav-col"><span class="badge badge-green">Native (dbt-spark)</span></td>
+            <td class="fav-col"><span class="badge badge-amber">Community adapter</span></td>
+            <td><span class="badge badge-amber">Community adapter</span></td>
+            <td><span class="badge badge-green">Native (dbt-redshift)</span></td>
+            <td><span class="badge badge-amber">Community adapter</span></td>
+          </tr>
+          <tr>
+            <td class="row-label">Team size needed</td>
+            <td class="fav-col">2–5 engineers</td>
+            <td class="fav-col">3–6 engineers</td>
+            <td class="fav-col">1–3 engineers</td>
+            <td>1–3 engineers</td>
+            <td>2–4 engineers</td>
+            <td>3–6 engineers</td>
+          </tr>
+
+          <tr><td class="section-row" colspan="7">Verdict</td></tr>
+          <tr>
+            <td class="row-label">Best for</td>
+            <td class="fav-col">Enterprise governance + data sharing</td>
+            <td class="fav-col">ML + analytics on one platform</td>
+            <td class="fav-col">Sub-second dashboards, high concurrency</td>
+            <td>Budget-first, low complexity</td>
+            <td>AWS-native, avoiding SF cost</td>
+            <td>No lock-in, multi-engine</td>
+          </tr>
+          <tr>
+            <td class="row-label">Overall rating</td>
+            <td class="fav-col"><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-half"></div></div><span style="font-size:12px;color:var(--ink-3)">4.5/5</span></td>
+            <td class="fav-col"><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-half"></div></div><span style="font-size:12px;color:var(--ink-3)">4.5/5</span></td>
+            <td class="fav-col"><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-off"></div></div><span style="font-size:12px;color:var(--ink-3)">4/5</span></td>
+            <td><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-off"></div></div><span style="font-size:12px;color:var(--ink-3)">4/5</span></td>
+            <td><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-half"></div><div class="dot dot-off"></div></div><span style="font-size:12px;color:var(--ink-3)">3.5/5</span></td>
+            <td><div class="dot-row"><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-on"></div><div class="dot dot-off"></div><div class="dot dot-off"></div></div><span style="font-size:12px;color:var(--ink-3)">3/5</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DEEP DIVES -->
+  <section class="section" id="deep-dives">
+    <p class="section-label">Platform deep dives</p>
+    <h2 class="section-title">Architecture-specific implementation</h2>
+    <p class="section-sub">Full pipeline design for each of the three recommended platforms, incorporating the corrected ES + S3 enrichment data model.</p>
+
+    <!-- SNOWFLAKE DIVE -->
+    <div class="deep-dive" id="snowflake-dive">
+      <div class="deep-dive-header">
+        <div>
+          <h3 class="deep-dive-title">Snowflake + Snowpipe</h3>
+          <p class="deep-dive-desc">ES canonical records ingest via Lambda scroll → S3 staging → Snowpipe into <code style="font-family:var(--mono);font-size:12px">raw_es</code>. S3 enrichment payloads land in <code style="font-family:var(--mono);font-size:12px">s3_enrichment</code> keyed by <code style="font-family:var(--mono);font-size:12px">es_ref_id</code>. RabbitMQ events trigger Lambda via SQS bridge.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="badge badge-amber">$200–600/mo</span>
+          <span class="badge badge-green">1–5s queries</span>
+        </div>
+      </div>
+
+      <div class="flow-steps">
+        <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-text"><strong>RabbitMQ → SQS bridge → Lambda trigger.</strong> Domain events (record.updated, enrichment.complete) are bridged from RabbitMQ to SQS. Lambda consumes and routes: ES events trigger the ES extractor; enrichment.complete events trigger the S3 transformer.</div></div>
+        <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-text"><strong>Lambda ES extractor → S3 staging.</strong> Uses search_after pagination with an SSM watermark. Writes Parquet to <code style="font-family:var(--mono);font-size:12px">s3://staging/es/</code> prefix. Row group size 50k, Snappy compressed.</div></div>
+        <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-text"><strong>Snowpipe auto-ingest.</strong> SQS notification on S3 file arrival triggers Snowpipe. Copies into <code style="font-family:var(--mono);font-size:12px">raw_es</code> table. <code style="font-family:var(--mono);font-size:12px">ON_ERROR = CONTINUE</code> prevents bad rows blocking the pipe.</div></div>
+        <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-text"><strong>S3 enrichment processor.</strong> Extracts <code style="font-family:var(--mono);font-size:12px">es_ref_id</code> from large JSON payload, validates it exists, writes to <code style="font-family:var(--mono);font-size:12px">s3://staging/enrichment/</code>. Orphan detection logs any missing keys immediately.</div></div>
+        <div class="flow-step"><div class="flow-step-num">5</div><div class="flow-step-text"><strong>dbt MERGE model.</strong> Joins <code style="font-family:var(--mono);font-size:12px">raw_es LEFT JOIN s3_enrichment ON entity_id = es_ref_id</code>. Produces <code style="font-family:var(--mono);font-size:12px">entities_unified</code> — the single source of truth for all dashboards.</div></div>
+      </div>
+
+      <div class="stack-row">
+        <div class="stack-chip"><span class="stack-chip-cat">Storage</span><span class="stack-chip-name">S3 + Snowflake</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Ingest</span><span class="stack-chip-name">Snowpipe (auto)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Extract</span><span class="stack-chip-name">AWS Lambda (Python)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Events</span><span class="stack-chip-name">RabbitMQ → SQS</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Transform</span><span class="stack-chip-name">dbt Core (free)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Watermark</span><span class="stack-chip-name">AWS SSM Parameter</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Schema</span><span class="stack-chip-name">VARIANT (flexible)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">BI</span><span class="stack-chip-name">Tableau / Superset</span></div>
+      </div>
+
+      <div class="callout warning">
+        <strong>Credit burn warning:</strong> Set <code style="font-family:var(--mono);font-size:12px">AUTO_SUSPEND = 60</code> on all warehouses. Unoptimized dbt MERGE models on large tables are the most common cause of unexpected credit spend. Always use <code style="font-family:var(--mono);font-size:12px">is_incremental()</code> guards in every dbt model.
+      </div>
+    </div>
+
+    <!-- CLICKHOUSE DIVE -->
+    <div class="deep-dive" id="clickhouse-dive">
+      <div class="deep-dive-header">
+        <div>
+          <h3 class="deep-dive-title">ClickHouse + ReplacingMergeTree</h3>
+          <p class="deep-dive-desc">Fastest query performance of all six options. ES data lands in <code style="font-family:var(--mono);font-size:12px">es_raw</code> via S3Queue. Enrichment in <code style="font-family:var(--mono);font-size:12px">s3_enrichment</code> via second S3Queue. AggregatingMergeTree materialized view pre-joins for sub-second dashboard queries.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="badge badge-green">$80–250/mo</span>
+          <span class="badge badge-green">&lt;1s queries</span>
+        </div>
+      </div>
+
+      <div class="flow-steps">
+        <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-text"><strong>ReplacingMergeTree engine.</strong> Both <code style="font-family:var(--mono);font-size:12px">es_raw</code> and <code style="font-family:var(--mono);font-size:12px">s3_enrichment</code> use ReplacingMergeTree with <code style="font-family:var(--mono);font-size:12px">updated_at</code> as the version column. ClickHouse keeps the highest-version row per ORDER BY key during background merges.</div></div>
+        <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-text"><strong>S3Queue engine.</strong> ClickHouse polls S3 staging prefixes continuously. Each file processed exactly once, tracked in ZooKeeper. Materialized view automatically pipes rows from queue into <code style="font-family:var(--mono);font-size:12px">es_raw</code> and <code style="font-family:var(--mono);font-size:12px">s3_enrichment</code> tables.</div></div>
+        <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-text"><strong>AggregatingMergeTree serving layer.</strong> <code style="font-family:var(--mono);font-size:12px">entities_serving</code> is pre-joined using two MVs — one fired on each ES insert, one on each enrichment insert. Dashboard queries hit this table with no FINAL and return in milliseconds.</div></div>
+        <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-text"><strong>FINAL modifier for correctness.</strong> Until background merges run, duplicate rows coexist in raw tables. For exact counts, append <code style="font-family:var(--mono);font-size:12px">FINAL</code> to raw table queries or use the serving layer MV which is already deduplicated.</div></div>
+        <div class="flow-step"><div class="flow-step-num">5</div><div class="flow-step-text"><strong>Orphan monitoring.</strong> LEFT JOIN query on <code style="font-family:var(--mono);font-size:12px">s3_enrichment LEFT JOIN es_raw WHERE es_raw.entity_id IS NULL</code> surfaces all enrichments without a matching ES document. Schedule this as a daily alert.</div></div>
+      </div>
+
+      <div class="stack-row">
+        <div class="stack-chip"><span class="stack-chip-cat">Engine</span><span class="stack-chip-name">ClickHouse Cloud</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Table type</span><span class="stack-chip-name">ReplacingMergeTree</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Ingest</span><span class="stack-chip-name">S3Queue engine</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Serving</span><span class="stack-chip-name">AggregatingMergeTree</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Extract</span><span class="stack-chip-name">Lambda (Python)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Events</span><span class="stack-chip-name">RabbitMQ → SQS</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">BI</span><span class="stack-chip-name">Grafana / Superset</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Monitor</span><span class="stack-chip-name">system.s3queue</span></div>
+      </div>
+
+      <div class="callout">
+        <strong>ReplacingMergeTree is eventually consistent.</strong> This is a feature, not a bug — inserts are always fast because deduplication happens asynchronously. For reporting workloads where occasional duplicates during a merge window are acceptable, this is ideal. For billing or exact-count use cases, always use <code style="font-family:var(--mono);font-size:12px">FINAL</code> or the serving layer MV.
+      </div>
+    </div>
+
+    <!-- DATABRICKS DIVE -->
+    <div class="deep-dive" id="databricks-dive">
+      <div class="deep-dive-header">
+        <div>
+          <h3 class="deep-dive-title">Databricks + Delta Lake</h3>
+          <p class="deep-dive-desc">Best choice when ML pipelines are in the roadmap. Auto Loader continuously ingests ES Parquet from S3. Delta MERGE handles deduplication and orphan enrichment reconciliation. SQL Warehouse delivers 2–6s dashboards.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <span class="badge badge-amber">$300–900/mo</span>
+          <span class="badge badge-green">2–6s queries</span>
+        </div>
+      </div>
+
+      <div class="flow-steps">
+        <div class="flow-step"><div class="flow-step-num">1</div><div class="flow-step-text"><strong>Auto Loader for ES data.</strong> Databricks Auto Loader monitors the S3 staging prefix using <code style="font-family:var(--mono);font-size:12px">cloudFiles</code> source. Processes only new files using an incremental checkpoint. Schema inference handles ES field additions automatically.</div></div>
+        <div class="flow-step"><div class="flow-step-num">2</div><div class="flow-step-text"><strong>Delta MERGE for deduplication.</strong> <code style="font-family:var(--mono);font-size:12px">MERGE INTO es_raw WHEN MATCHED AND source.updated_at &gt; target.updated_at THEN UPDATE</code>. Immediate ACID guarantee — no eventual consistency window like ClickHouse.</div></div>
+        <div class="flow-step"><div class="flow-step-num">3</div><div class="flow-step-text"><strong>Orphan enrichment handling.</strong> The Delta MERGE model for enrichments uses <code style="font-family:var(--mono);font-size:12px">WHEN NOT MATCHED BY TARGET THEN INSERT</code> to hold orphan enrichments. A scheduled reconciliation job re-attempts joining them against <code style="font-family:var(--mono);font-size:12px">es_raw</code> after a configurable delay.</div></div>
+        <div class="flow-step"><div class="flow-step-num">4</div><div class="flow-step-text"><strong>Unified entity view.</strong> <code style="font-family:var(--mono);font-size:12px">entities_unified</code> is a Delta table maintained by a Databricks workflow joining ES and enrichment tables on <code style="font-family:var(--mono);font-size:12px">entity_id = es_ref_id</code>. Unity Catalog governs access and lineage.</div></div>
+        <div class="flow-step"><div class="flow-step-num">5</div><div class="flow-step-text"><strong>Databricks SQL Serverless.</strong> Dashboards connect via JDBC to a Serverless SQL Warehouse. No cluster warm-up time. Results cache handles repeated dashboard queries. Cost charged per DBU consumed, not per hour.</div></div>
+      </div>
+
+      <div class="stack-row">
+        <div class="stack-chip"><span class="stack-chip-cat">Platform</span><span class="stack-chip-name">Databricks (DBR)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Table format</span><span class="stack-chip-name">Delta Lake</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Ingest</span><span class="stack-chip-name">Auto Loader</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Dedup</span><span class="stack-chip-name">Delta MERGE (ACID)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Governance</span><span class="stack-chip-name">Unity Catalog</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">ML</span><span class="stack-chip-name">MLflow (built-in)</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">Query</span><span class="stack-chip-name">SQL Serverless WH</span></div>
+        <div class="stack-chip"><span class="stack-chip-cat">BI</span><span class="stack-chip-name">Tableau / Looker</span></div>
+      </div>
+
+      <div class="callout success">
+        <strong>Best orphan enrichment handling:</strong> Databricks is the only platform in this evaluation where enrichments arriving before their ES parent are automatically reconciled without manual intervention. The Delta MERGE <code style="font-family:var(--mono);font-size:12px">WHEN NOT MATCHED</code> clause holds them in a staging state and a reconciliation workflow re-attempts the join on a schedule.
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPLEMENTATION -->
+  <section class="section" id="implementation">
+    <p class="section-label">Implementation code</p>
+    <h2 class="section-title">Key code across all platforms</h2>
+    <p class="section-sub">Production-ready code for the most critical components: ES extractor, S3 enrichment processor, and deduplication patterns.</p>
+
+    <!-- Lambda ES extractor -->
+    <div class="code-section">
+      <div class="code-block-wrap">
+        <div class="code-header">
+          <div class="code-title"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>Lambda — ES incremental extractor (shared across all platforms)</div>
+          <span class="code-lang">Python</span>
+        </div>
+        <pre><code><span class="cm"># Shared across Snowflake, ClickHouse, Databricks, and Athena stacks</span>
+<span class="kw">import</span> os, json, boto3, pyarrow <span class="kw">as</span> pa, pyarrow.parquet <span class="kw">as</span> pq
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+<span class="kw">from</span> io <span class="kw">import</span> BytesIO
+<span class="kw">from</span> elasticsearch <span class="kw">import</span> Elasticsearch
+
+ES_HOST        = os.environ[<span class="str">"ES_HOST"</span>]
+STAGING_BUCKET = os.environ[<span class="str">"STAGING_BUCKET"</span>]
+WATERMARK_KEY  = <span class="str">"/datalake/watermark/es"</span>
+PAGE_SIZE      = <span class="num">2000</span>
+
+es  = Elasticsearch(ES_HOST)
+ssm = boto3.client(<span class="str">"ssm"</span>)
+s3  = boto3.client(<span class="str">"s3"</span>)
+
+<span class="kw">def</span> <span class="fn">get_watermark</span>() -> str:
+    <span class="kw">try</span>:
+        <span class="kw">return</span> ssm.get_parameter(Name=WATERMARK_KEY)[<span class="str">"Parameter"</span>][<span class="str">"Value"</span>]
+    <span class="kw">except</span> ssm.exceptions.ParameterNotFound:
+        <span class="kw">return</span> <span class="str">"1970-01-01T00:00:00Z"</span>
+
+<span class="kw">def</span> <span class="fn">scroll_es</span>(since: str) -> list:
+    hits, search_after = [], <span class="kw">None</span>
+    query = {
+        <span class="str">"size"</span>: PAGE_SIZE,
+        <span class="str">"query"</span>: {<span class="str">"range"</span>: {<span class="str">"updated_at"</span>: {<span class="str">"gt"</span>: since}}},
+        <span class="str">"sort"</span>: [{<span class="str">"updated_at"</span>: <span class="str">"asc"</span>}, {<span class="str">"_id"</span>: <span class="str">"asc"</span>}]
+    }
+    <span class="kw">while True</span>:
+        <span class="kw">if</span> search_after:
+            query[<span class="str">"search_after"</span>] = search_after
+        resp = es.search(index=<span class="str">"*"</span>, body=query)
+        page = resp[<span class="str">"hits"</span>][<span class="str">"hits"</span>]
+        <span class="kw">if not</span> page: <span class="kw">break</span>
+        hits.extend(page)
+        search_after = page[-<span class="num">1</span>][<span class="str">"sort"</span>]
+        <span class="kw">if</span> len(page) < PAGE_SIZE: <span class="kw">break</span>
+    <span class="kw">return</span> hits
+
+<span class="kw">def</span> <span class="fn">handler</span>(event, context):
+    trigger = event.get(<span class="str">"trigger_source"</span>, <span class="str">"schedule"</span>)
+    since   = event.get(<span class="str">"updated_after"</span>) <span class="kw">or</span> get_watermark()
+    run_id  = datetime.now(timezone.utc).strftime(<span class="str">"%Y%m%dT%H%M%SZ"</span>)
+    hits    = scroll_es(since)
+    <span class="kw">if not</span> hits:
+        <span class="kw">return</span> {<span class="str">"status"</span>: <span class="str">"no_new_records"</span>}
+
+    rows = [{
+        <span class="str">"entity_id"</span>:    h[<span class="str">"_id"</span>],
+        <span class="str">"es_index"</span>:     h[<span class="str">"_index"</span>],
+        <span class="str">"updated_at"</span>:   h[<span class="str">"_source"</span>].get(<span class="str">"updated_at"</span>, since),
+        <span class="str">"tenant_id"</span>:    h[<span class="str">"_source"</span>].get(<span class="str">"tenant_id"</span>, <span class="str">""</span>),
+        <span class="str">"status"</span>:       h[<span class="str">"_source"</span>].get(<span class="str">"status"</span>, <span class="str">""</span>),
+        <span class="str">"pipeline_run"</span>: run_id,
+        <span class="str">"raw_json"</span>:     json.dumps(h[<span class="str">"_source"</span>]),
+    } <span class="kw">for</span> h <span class="kw">in</span> hits]
+
+    buf = BytesIO()
+    pq.write_table(pa.Table.from_pylist(rows), buf,
+                   compression=<span class="str">"snappy"</span>, row_group_size=<span class="num">50_000</span>)
+    key = <span class="str">f"es/{run_id}/batch_{len(hits)}.parquet"</span>
+    s3.put_object(Bucket=STAGING_BUCKET, Key=key, Body=buf.getvalue())
+
+    <span class="kw">if</span> trigger == <span class="str">"schedule"</span>:
+        latest = max(h[<span class="str">"_source"</span>].get(<span class="str">"updated_at"</span>, since) <span class="kw">for</span> h <span class="kw">in</span> hits)
+        ssm.put_parameter(Name=WATERMARK_KEY, Value=latest,
+                          Type=<span class="str">"String"</span>, Overwrite=<span class="kw">True</span>)
+    <span class="kw">return</span> {<span class="str">"status"</span>: <span class="str">"ok"</span>, <span class="str">"records"</span>: len(hits)}</code></pre>
+      </div>
+
+      <!-- S3 enrichment processor -->
+      <div class="code-block-wrap">
+        <div class="code-header">
+          <div class="code-title"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>Lambda — S3 enrichment processor (extracts es_ref_id foreign key)</div>
+          <span class="code-lang">Python</span>
+        </div>
+        <pre><code><span class="cm"># Handles large JSON enrichment files — extracts es_ref_id for the join</span>
+<span class="kw">import</span> os, json, boto3, pyarrow <span class="kw">as</span> pa, pyarrow.parquet <span class="kw">as</span> pq
+<span class="kw">from</span> io <span class="kw">import</span> BytesIO
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+
+STAGING_BUCKET = os.environ[<span class="str">"STAGING_BUCKET"</span>]
+ES_REF_FIELD   = os.environ.get(<span class="str">"ES_REF_FIELD"</span>, <span class="str">"es_ref_id"</span>)
+s3 = boto3.client(<span class="str">"s3"</span>)
+
+<span class="kw">def</span> <span class="fn">parse_enrichment</span>(doc: dict, s3_key: str) -> dict:
+    <span class="cm"># Try multiple common field name patterns for the reference key</span>
+    es_ref_id = (
+        doc.get(ES_REF_FIELD)
+        <span class="kw">or</span> doc.get(<span class="str">"entity_id"</span>)
+        <span class="kw">or</span> doc.get(<span class="str">"doc_id"</span>)
+        <span class="kw">or</span> doc.get(<span class="str">"record_id"</span>)
+    )
+    <span class="kw">if not</span> es_ref_id:
+        <span class="kw">raise</span> ValueError(
+            <span class="str">f"Missing ES reference key in {s3_key}. "</span>
+            <span class="str">f"Keys found: {list(doc.keys())[:10]}"</span>
+        )
+    <span class="kw">return</span> {
+        <span class="str">"es_ref_id"</span>:          str(es_ref_id),   <span class="cm"># FK → es_raw.entity_id</span>
+        <span class="str">"tenant_id"</span>:          str(doc.get(<span class="str">"tenant_id"</span>, <span class="str">""</span>)),
+        <span class="str">"enrichment_version"</span>: str(
+            doc.get(<span class="str">"enrichment_at"</span>) <span class="kw">or</span>
+            doc.get(<span class="str">"updated_at"</span>) <span class="kw">or</span>
+            datetime.now(timezone.utc).isoformat()
+        ),
+        <span class="str">"source_s3_key"</span>:      s3_key,
+        <span class="str">"model_version"</span>:      str(doc.get(<span class="str">"model_version"</span>, <span class="str">""</span>)),
+        <span class="str">"enrichment_type"</span>:    str(doc.get(<span class="str">"type"</span>, <span class="str">"ai_enrichment"</span>)),
+        <span class="str">"enrichment_json"</span>:    json.dumps(doc),   <span class="cm"># full payload preserved</span>
+    }
+
+<span class="kw">def</span> <span class="fn">handler</span>(event, context):
+    sources = []
+    <span class="kw">if</span> <span class="str">"Records"</span> <span class="kw">in</span> event:  <span class="cm"># S3 event notification</span>
+        sources = [{<span class="str">"bucket"</span>: r[<span class="str">"s3"</span>][<span class="str">"bucket"</span>][<span class="str">"name"</span>],
+                    <span class="str">"key"</span>: r[<span class="str">"s3"</span>][<span class="str">"object"</span>][<span class="str">"key"</span>]} <span class="kw">for</span> r <span class="kw">in</span> event[<span class="str">"Records"</span>]]
+    <span class="kw">elif</span> event.get(<span class="str">"trigger_source"</span>) == <span class="str">"rabbitmq"</span>:  <span class="cm"># enrichment.complete event</span>
+        sources = [{<span class="str">"bucket"</span>: os.environ[<span class="str">"AI_SOURCE_BUCKET"</span>],
+                    <span class="str">"key"</span>: event[<span class="str">"s3_key"</span>]}]
+
+    rows, errors = [], []
+    run_id = datetime.now(timezone.utc).strftime(<span class="str">"%Y%m%dT%H%M%SZ"</span>)
+
+    <span class="kw">for</span> src <span class="kw">in</span> sources:
+        raw = json.loads(s3.get_object(**src)[<span class="str">"Body"</span>].read())
+        docs = raw <span class="kw">if isinstance</span>(raw, list) <span class="kw">else</span> [raw]
+        <span class="kw">for</span> doc <span class="kw">in</span> docs:
+            <span class="kw">try</span>:
+                rows.append(parse_enrichment(doc, src[<span class="str">"key"</span>]))
+            <span class="kw">except</span> ValueError <span class="kw">as</span> e:
+                errors.append(str(e)); print(<span class="str">f"ORPHAN: {e}"</span>)
+
+    <span class="kw">if</span> rows:
+        buf = BytesIO()
+        pq.write_table(pa.Table.from_pylist(rows), buf,
+                       compression=<span class="str">"snappy"</span>, row_group_size=<span class="num">10_000</span>)
+        key = <span class="str">f"s3_enrichment/{run_id}/batch_{len(rows)}.parquet"</span>
+        s3.put_object(Bucket=STAGING_BUCKET, Key=key, Body=buf.getvalue())
+    <span class="kw">return</span> {<span class="str">"status"</span>: <span class="str">"ok"</span>, <span class="str">"rows"</span>: len(rows), <span class="str">"errors"</span>: len(errors)}</code></pre>
+      </div>
+
+      <!-- Snowflake DDL -->
+      <div class="code-block-wrap">
+        <div class="code-header">
+          <div class="code-title"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>Snowflake — table DDL, Snowpipe, and unified entity view</div>
+          <span class="code-lang">SQL</span>
+        </div>
+        <pre><code><span class="cm">-- ES canonical table</span>
+<span class="kw">CREATE TABLE</span> datalake.raw_es (
+    entity_id     STRING     <span class="kw">NOT NULL</span>,
+    tenant_id     STRING,
+    updated_at    TIMESTAMP_NTZ,
+    ingested_at   TIMESTAMP_NTZ <span class="kw">DEFAULT</span> CURRENT_TIMESTAMP(),
+    status        STRING,
+    raw_json      <span class="var">VARIANT</span>     <span class="cm">-- flexible, handles schema evolution</span>
+);
+
+<span class="cm">-- S3 enrichment sidecar table (keyed by es_ref_id FK)</span>
+<span class="kw">CREATE TABLE</span> datalake.s3_enrichment (
+    es_ref_id         STRING     <span class="cm">-- FK → raw_es.entity_id</span>
+    tenant_id         STRING,
+    enrichment_version TIMESTAMP_NTZ,
+    source_s3_key     STRING,
+    model_version     STRING,
+    enrichment_type   STRING,
+    enrichment_json   <span class="var">VARIANT</span>   <span class="cm">-- large JSON stored as VARIANT</span>
+);
+
+<span class="cm">-- Snowpipe: auto-ingest ES Parquet from S3 staging</span>
+<span class="kw">CREATE PIPE</span> pipe_es AUTO_INGEST = <span class="kw">TRUE AS</span>
+    <span class="kw">COPY INTO</span> raw_es (entity_id, tenant_id, updated_at, status, raw_json)
+    <span class="kw">FROM</span> (
+        <span class="kw">SELECT</span> $1:entity_id::STRING, $1:tenant_id::STRING,
+               $1:updated_at::TIMESTAMP_NTZ, $1:status::STRING, $1
+        <span class="kw">FROM</span> @raw_stage_es
+    )
+    FILE_FORMAT = (TYPE = PARQUET) ON_ERROR = <span class="str">'CONTINUE'</span>;
+
+<span class="cm">-- Unified entity view — LEFT JOIN on the reference key</span>
+<span class="kw">CREATE VIEW</span> datalake.entities_unified <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+    e.entity_id,
+    e.tenant_id,
+    e.status,
+    e.updated_at                          <span class="kw">AS</span> es_updated_at,
+    e.raw_json                            <span class="kw">AS</span> es_payload,
+    s.enrichment_json                     <span class="kw">AS</span> s3_payload,   <span class="cm">-- NULL if no enrichment yet</span>
+    s.model_version,
+    s.enrichment_version                  <span class="kw">AS</span> s3_updated_at,
+    s.source_s3_key,
+    (s.es_ref_id <span class="kw">IS NOT NULL</span>)            <span class="kw">AS</span> has_enrichment
+<span class="kw">FROM</span> datalake.raw_es e
+<span class="kw">LEFT JOIN</span> datalake.s3_enrichment s
+    <span class="kw">ON</span>  e.entity_id = s.es_ref_id
+    <span class="kw">AND</span> e.tenant_id = s.tenant_id;
+
+<span class="cm">-- Orphan coverage monitoring query</span>
+<span class="kw">SELECT</span> tenant_id,
+    <span class="fn">COUNT</span>(DISTINCT entity_id)                      <span class="kw">AS</span> total_entities,
+    <span class="fn">COUNT</span>(DISTINCT <span class="kw">CASE WHEN</span> has_enrichment <span class="kw">THEN</span> entity_id <span class="kw">END</span>) <span class="kw">AS</span> enriched,
+    <span class="fn">ROUND</span>(enriched / total_entities * <span class="num">100</span>, <span class="num">1</span>)        <span class="kw">AS</span> coverage_pct
+<span class="kw">FROM</span> datalake.entities_unified
+<span class="kw">GROUP BY</span> tenant_id;</code></pre>
+      </div>
+
+      <!-- ClickHouse DDL -->
+      <div class="code-block-wrap">
+        <div class="code-header">
+          <div class="code-title"><div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>ClickHouse — ReplacingMergeTree DDL and serving layer</div>
+          <span class="code-lang">SQL</span>
+        </div>
+        <pre><code><span class="cm">-- ES raw table: ReplacingMergeTree keeps highest updated_at per entity_id</span>
+<span class="kw">CREATE TABLE</span> datalake.es_raw (
+    entity_id    String,
+    tenant_id    String,
+    updated_at   DateTime64(<span class="num">3</span>),   <span class="cm">-- ReplacingMergeTree version key</span>
+    ingested_at  DateTime64(<span class="num">3</span>) <span class="kw">DEFAULT</span> now64(),
+    status       String,
+    raw_json     String
+) ENGINE = ReplacingMergeTree(updated_at)
+  PARTITION BY toYYYYMM(ingested_at)
+  ORDER BY (tenant_id, entity_id);
+
+<span class="cm">-- S3 enrichment table: keyed by es_ref_id (FK to es_raw.entity_id)</span>
+<span class="kw">CREATE TABLE</span> datalake.s3_enrichment (
+    es_ref_id         String,   <span class="cm">-- FK → es_raw.entity_id</span>
+    tenant_id         String,
+    enrichment_version DateTime64(<span class="num">3</span>),
+    source_s3_key     String,
+    model_version     String,
+    enrichment_type   String,
+    enrichment_json   String
+) ENGINE = ReplacingMergeTree(enrichment_version)
+  PARTITION BY toYYYYMM(ingested_at)
+  ORDER BY (tenant_id, es_ref_id);  <span class="cm">-- same structure as es_raw</span>
+
+<span class="cm">-- Serving layer: pre-joined AggregatingMergeTree for sub-second queries</span>
+<span class="kw">CREATE TABLE</span> datalake.entities_serving (
+    entity_id       String,
+    tenant_id       String,
+    status          SimpleAggregateFunction(anyLast, String),
+    es_updated_at   SimpleAggregateFunction(max, DateTime64(<span class="num">3</span>)),
+    s3_updated_at   SimpleAggregateFunction(max, DateTime64(<span class="num">3</span>)),
+    es_payload      SimpleAggregateFunction(anyLast, String),
+    s3_payload      SimpleAggregateFunction(anyLast, String),  <span class="cm">-- NULL until enrichment arrives</span>
+    model_version   SimpleAggregateFunction(anyLast, String)
+) ENGINE = AggregatingMergeTree()
+  ORDER BY (tenant_id, entity_id);
+
+<span class="cm">-- Dashboard query: no FINAL needed, sub-second</span>
+<span class="kw">SELECT</span>
+    entity_id,
+    anyLastMerge(status)        <span class="kw">AS</span> status,
+    maxMerge(es_updated_at)     <span class="kw">AS</span> es_updated_at,
+    notEmpty(anyLastMerge(s3_payload)) <span class="kw">AS</span> has_enrichment
+<span class="kw">FROM</span> datalake.entities_serving
+<span class="kw">WHERE</span> tenant_id = <span class="str">'acme'</span>
+<span class="kw">GROUP BY</span> entity_id, tenant_id
+<span class="kw">ORDER BY</span> maxMerge(es_updated_at) <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">1000</span>;</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- DECISION GUIDE -->
+  <section class="section" id="decision">
+    <p class="section-label">Decision guide</p>
+    <h2 class="section-title">Which platform to choose</h2>
+    <p class="section-sub">A simple decision tree based on your actual requirements — not preferences.</p>
+
+    <div style="display:grid;gap:12px;margin-top:32px;">
+      <div class="callout success">
+        <strong>Step 1 — Do dashboards need data fresher than 5 minutes?</strong><br>
+        If yes → evaluate Arch 4 (Kafka + Iceberg). If no → continue.
+      </div>
+      <div class="callout success">
+        <strong>Step 2 — Is ML / feature engineering on the roadmap in the next 12 months?</strong><br>
+        If yes → Databricks (Delta Lake + MLflow unified platform). If no → continue.
+      </div>
+      <div class="callout success">
+        <strong>Step 3 — Do you need row-level security, data sharing, or enterprise audit logs?</strong><br>
+        If yes → Snowflake (governance champion). If no → continue.
+      </div>
+      <div class="callout success">
+        <strong>Step 4 — Do dashboards need sub-second response for 50+ concurrent users?</strong><br>
+        If yes → ClickHouse (fastest query engine in this evaluation). If no → continue.
+      </div>
+      <div class="callout">
+        <strong>Default → S3 + Athena (Arch 1).</strong><br>
+        Meets all stated requirements (&lt;30s dashboards, millions of records/month, incremental loading, schema evolution, enrichment join via es_ref_id) at $10–40/month. Start here. Migrate when a specific KPI proves the need.
+      </div>
+    </div>
+  </section>
+
+</div><!-- /container -->
+
+<footer>
+  <p><strong>Data Lake Architecture Report</strong> — Prepared for management review</p>
+  <p style="margin-top:6px">Architecture covers: Elasticsearch (primary source, ~70%) · S3 enrichment sidecar (es_ref_id FK join, ~30%) · RabbitMQ (event triggers) · Six platform options evaluated</p>
+  <p style="margin-top:6px">Platforms: Snowflake · Databricks · ClickHouse · S3 + Athena · Redshift Serverless · Apache Iceberg + Starburst</p>
+  <p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.3)">Confidential — Internal architecture document</p>
+</footer>
+
+<script>
+/* Fix anchor scroll offset for sticky nav on all internal links */
+const NAV_HEIGHT = 72;
+
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    const id = this.getAttribute('href').slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    const top = target.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT;
+    window.scrollTo({ top, behavior: 'smooth' });
+  });
+});
+
+/* Also fix any direct hash navigation on page load */
+if (window.location.hash) {
+  setTimeout(() => {
+    const id = window.location.hash.slice(1);
+    const target = document.getElementById(id);
+    if (target) {
+      const top = target.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }, 100);
+}
+</script>
+
+</body>
+</html>
