@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Architecture Design — Unified Analytics Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0e0d0b;
+    --ink-mid: #3a3830;
+    --ink-light: #7a7668;
+    --paper: #f5f2eb;
+    --paper-warm: #ede9e0;
+    --paper-mid: #ddd9cf;
+    --accent: #c4410c;
+    --accent-muted: #e8c5b4;
+    --teal: #0e6b5e;
+    --teal-muted: #b8d9d4;
+    --purple: #4a3880;
+    --purple-muted: #d4cfe8;
+    --amber: #9a5f0c;
+    --amber-muted: #f0ddb8;
+    --blue: #1a4f7a;
+    --blue-muted: #c2d8ec;
+    --mono: 'DM Mono', monospace;
+    --display: 'Fraunces', Georgia, serif;
+    --body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* —— HEADER —— */
+  header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 64px 80px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    border: 1px solid rgba(245,242,235,0.08);
+    border-radius: 50%;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 200px; height: 200px;
+    border: 1px solid rgba(245,242,235,0.12);
+    border-radius: 50%;
+  }
+  .header-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-muted);
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-size: clamp(32px, 5vw, 54px);
+    font-weight: 300;
+    line-height: 1.15;
+    max-width: 640px;
+    margin-bottom: 24px;
+  }
+  header h1 em {
+    font-style: italic;
+    color: var(--accent-muted);
+  }
+  .header-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(245,242,235,0.12);
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  .meta-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(245,242,235,0.4);
+  }
+  .meta-value {
+    font-size: 13px;
+    color: rgba(245,242,235,0.85);
+  }
+
+  /* —— NAV —— */
+  nav {
+    background: var(--paper-warm);
+    border-bottom: 1px solid var(--paper-mid);
+    padding: 0 80px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  nav a {
+    display: block;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  nav a:hover { color: var(--ink); border-bottom-color: var(--accent); }
+
+  /* —— LAYOUT —— */
+  main { max-width: 1100px; margin: 0 auto; padding: 0 80px 80px; }
+
+  section { padding: 72px 0 0; }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 40px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--paper-mid);
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-light);
+    letter-spacing: 0.08em;
+  }
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 300;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 300;
+    margin: 32px 0 12px;
+  }
+
+  p { margin-bottom: 16px; color: var(--ink-mid); max-width: 720px; }
+  p strong { color: var(--ink); font-weight: 500; }
+
+  /* —— FINDING CARDS —— */
+  .finding-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--paper-mid);
+    border: 1px solid var(--paper-mid);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .finding-card {
+    background: var(--paper);
+    padding: 24px;
+  }
+  .finding-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 12px;
+  }
+  .tag-raw    { background: var(--teal-muted);   color: var(--teal); }
+  .tag-cons   { background: var(--amber-muted);  color: var(--amber); }
+  .tag-es     { background: var(--purple-muted); color: var(--purple); }
+  .tag-csv    { background: var(--paper-mid);    color: var(--ink-light); }
+  .tag-risk   { background: var(--accent-muted); color: var(--accent); }
+
+  .finding-card h4 {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .finding-card p {
+    font-size: 13px;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* —— RELATIONSHIP DIAGRAM —— */
+  .rel-diagram {
+    background: var(--paper-warm);
+    border: 1px solid var(--paper-mid);
+    border-radius: 4px;
+    padding: 40px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+  .rel-diagram svg { display: block; min-width: 560px; }
+
+  /* —— ARCH DIAGRAM —— */
+  .arch-wrap {
+    background: var(--ink);
+    border-radius: 4px;
+    padding: 40px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+  .arch-wrap svg { display: block; min-width: 640px; }
+
+  /* —— LAYER STRIP —— */
+  .layers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--paper-mid);
+    border: 1px solid var(--paper-mid);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .layer {
+    padding: 28px 24px;
+    background: var(--paper);
+  }
+  .layer-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    margin-bottom: 14px;
+  }
+  .badge-bronze { background: #f0ddb8; color: #9a5f0c; }
+  .badge-silver { background: #dde5ee; color: #1a4f7a; }
+  .badge-gold   { background: #e8f2ee; color: #0e6b5e; }
+  .layer h4 { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+  .layer ul { padding-left: 16px; font-size: 13px; color: var(--ink-mid); }
+  .layer ul li { margin-bottom: 4px; line-height: 1.5; }
+
+  /* —— SCHEMA TABLES —— */
+  .schema-block { margin-bottom: 40px; }
+  .schema-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 16px;
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .schema-type {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    font-weight: 300;
+  }
+  .schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+    border: 1px solid var(--paper-mid);
+    border-top: none;
+  }
+  .schema-table th {
+    background: var(--paper-warm);
+    padding: 8px 16px;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    font-weight: 400;
+    border-bottom: 1px solid var(--paper-mid);
+  }
+  .schema-table td {
+    padding: 7px 16px;
+    border-bottom: 1px solid var(--paper-warm);
+    vertical-align: top;
+  }
+  .schema-table tr:last-child td { border-bottom: none; }
+  .schema-table tr:hover td { background: var(--paper-warm); }
+  .col-type { color: var(--teal); }
+  .col-note { color: var(--ink-light); font-size: 11px; }
+  .col-key {
+    display: inline-block;
+    background: var(--amber-muted);
+    color: var(--amber);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .col-fk {
+    display: inline-block;
+    background: var(--blue-muted);
+    color: var(--blue);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* —— CODE BLOCKS —— */
+  .code-block {
+    background: #1a1916;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 20px 0 32px;
+  }
+  .code-block-label {
+    background: #2a2925;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(245,242,235,0.4);
+  }
+  .code-block pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #d4cfa8;
+  }
+  .kw  { color: #c4856a; }
+  .fn  { color: #8fc2a8; }
+  .str { color: #a8c08a; }
+  .cmt { color: #5a5a52; font-style: italic; }
+  .num { color: #c4a87a; }
+
+  /* —— UPDATE FLOW —— */
+  .update-steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+  .update-step {
+    flex: 1;
+    min-width: 140px;
+    padding: 20px 16px;
+    background: var(--paper-warm);
+    border: 1px solid var(--paper-mid);
+    border-right: none;
+    position: relative;
+  }
+  .update-step:last-child { border-right: 1px solid var(--paper-mid); border-radius: 0 4px 4px 0; }
+  .update-step:first-child { border-radius: 4px 0 0 4px; }
+  .update-step::after {
+    content: '›';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--ink-light);
+    z-index: 1;
+    background: var(--paper);
+    padding: 2px;
+  }
+  .update-step:last-child::after { display: none; }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-light);
+    margin-bottom: 6px;
+  }
+  .step-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+  .step-sub { font-size: 11px; color: var(--ink-light); line-height: 1.4; }
+
+  /* —— OPTIMIZATION TABLE —— */
+  .opt-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+  .opt-table th {
+    text-align: left;
+    padding: 10px 16px;
+    background: var(--paper-warm);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    font-weight: 400;
+    border: 1px solid var(--paper-mid);
+  }
+  .opt-table td {
+    padding: 12px 16px;
+    border: 1px solid var(--paper-warm);
+    font-size: 13px;
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--ink-mid);
+  }
+  .opt-table td strong { color: var(--ink); font-weight: 500; }
+  .opt-table tr:hover td { background: var(--paper-warm); }
+
+  /* —— FOOTER —— */
+  footer {
+    background: var(--ink);
+    color: rgba(245,242,235,0.5);
+    padding: 40px 80px;
+    margin-top: 80px;
+    font-family: var(--mono);
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer span { letter-spacing: 0.06em; }
+
+  /* —— CALLOUT —— */
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    background: var(--accent-muted);
+    border-radius: 0 4px 4px 0;
+    margin: 20px 0 32px;
+    font-size: 13px;
+    color: var(--ink-mid);
+  }
+  .callout strong { color: var(--ink); }
+
+  .callout-teal {
+    border-left-color: var(--teal);
+    background: var(--teal-muted);
+  }
+
+  /* —— JOIN KEY PILLS —— */
+  .join-keys {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 20px 0 32px;
+  }
+  .join-key {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--paper-warm);
+    border: 1px solid var(--paper-mid);
+    border-radius: 4px;
+    padding: 12px 16px;
+  }
+  .join-key-code {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .join-key-desc { font-size: 12px; color: var(--ink-light); }
+
+  @media (max-width: 768px) {
+    header, main, nav, footer { padding-left: 24px; padding-right: 24px; }
+    .layers { grid-template-columns: 1fr; }
+    .update-steps { flex-direction: column; }
+    .update-step { border-right: 1px solid var(--paper-mid); border-bottom: none; border-radius: 0; }
+    .update-step:first-child { border-radius: 4px 4px 0 0; }
+    .update-step:last-child { border-bottom: 1px solid var(--paper-mid); border-radius: 0 0 4px 4px; }
+    .update-step::after { content: '↓'; right: auto; left: 50%; bottom: -12px; top: auto; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">Architecture Design Brief · Internal — Solution 1</div>
+  <h1>Unified Analytics Pipeline<br><em>from fragmented sources to Snowflake</em></h1>
+  <p style="color:rgba(245,242,235,0.6); max-width:560px; font-size:14px; margin-top:16px;">
+    Consolidating S3 JSON, Elasticsearch, SQL Server mapping, and CSV exports into a
+    single exposure-level analytics warehouse with near real-time update capability.
+  </p>
+  <div class="header-meta">
+    <div class="meta-item">
+      <span class="meta-label">Sources</span>
+      <span class="meta-value">4 systems</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Warehouse</span>
+      <span class="meta-value">Snowflake on AWS</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Granularity</span>
+      <span class="meta-value">Per detection × frame</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Latency target</span>
+      <span class="meta-value">≤ 90 seconds</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Primary client</span>
+      <span class="meta-value">21239 (Detroit Pistons)</span>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <a href="#analysis">Data Analysis</a>
+  <a href="#relationships">Relationships</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#schema">Snowflake Schema</a>
+  <a href="#queries">Example Queries</a>
+  <a href="#updates">Update Strategy</a>
+  <a href="#optimization">Optimization</a>
+</nav>
+
+<main>
+
+<!-- —— SECTION 1: DATA ANALYSIS —— -->
+<section id="analysis">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>Data Analysis — what's in each file</h2>
+  </div>
+
+  <p>Four files from three systems were analyzed. Each carries distinct fields and serves a different role in the final unified model.</p>
+
+  <div class="finding-grid">
+    <div class="finding-card">
+      <span class="finding-tag tag-raw">S3 · Raw</span>
+      <h4>small-video-original-*</h4>
+      <p>Ground-truth ML pipeline output. Contains 7 sampled frames at 1000ms intervals, per-frame detections with bounding boxes, confidence scores, and logo quality metrics. <strong>No client context attached.</strong></p>
+    </div>
+    <div class="finding-card">
+      <span class="finding-tag tag-cons">S3 · Consolidated</span>
+      <h4>21239_6ecc221b-*</h4>
+      <p>Client-enriched derivative. Adds <code>brandDetection[]</code> summaries with engagement and impression valuations, <code>classifierMetadata</code>, and client label mappings. <strong>Where valuation math lives.</strong></p>
+    </div>
+    <div class="finding-card">
+      <span class="finding-tag tag-es">Elasticsearch</span>
+      <h4>79801-1-*</h4>
+      <p>Client-facing indexed record. Adds social metrics (engagement: 673, impressions: 29,524, videoViews: 4,401), author info, NLP sentiment, and <strong>22 searchable tags</strong> that must be preserved.</p>
+    </div>
+    <div class="finding-card">
+      <span class="finding-tag tag-csv">CSV Export</span>
+      <h4>Export_1344964.csv</h4>
+      <p>97-column reporting output covering all current fields. Performance issue: slow to generate, not real-time. <strong>Must be fully supported</strong> — this defines the required output contract.</p>
+    </div>
+    <div class="finding-card">
+      <span class="finding-tag tag-risk">Risk</span>
+      <h4>Duplication at esid level</h4>
+      <p><code>FACT_POST_METRICS</code> holds exactly one row per <code>esid</code>. Impression counts must never be copied into per-detection rows — this would inflate totals across every brand detected in a post.</p>
+    </div>
+    <div class="finding-card">
+      <span class="finding-tag tag-risk">Risk</span>
+      <h4>Double-counting detections</h4>
+      <p>The consolidated file's <code>brandDetection[]</code> already aggregates what the raw frames contain. Raw frames are the authoritative source for per-detection granularity — never use both as inputs to the same count.</p>
+    </div>
+  </div>
+
+  <h3>Brands detected in sample post</h3>
+  <p>11 distinct brand × asset combinations across 7 frames of a 6-second Detroit Pistons video:</p>
+  <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:32px;">
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">henry_ford_health_system | pole_pad</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">kia_motors | pole_pad</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">kia_motors | basketball_court_level_led</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">belfor | pole_pad</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">stockx | jersey</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">chase | on_court_seating</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">little_caesars | on_court_seating</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">nba | basket_support</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">sonic_drive_in</span>
+    <span style="font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--paper-warm);border:1px solid var(--paper-mid);border-radius:2px;">bet365</span>
+  </div>
+</section>
+
+<!-- —— SECTION 2: RELATIONSHIPS —— -->
+<section id="relationships">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>Data Relationship Modeling</h2>
+  </div>
+
+  <p>Three join keys bind the four sources. SQL Server is the authoritative bridge — it holds the canonical mapping between all three identifiers.</p>
+
+  <div class="join-keys">
+    <div class="join-key">
+      <div>
+        <div class="join-key-code">taskId</div>
+        <div class="join-key-desc">Links raw message → consolidated S3 file</div>
+      </div>
+    </div>
+    <div class="join-key">
+      <div>
+        <div class="join-key-code">esid</div>
+        <div class="join-key-desc">79801|1|1908676407850377371 · Links ES doc → consolidated via SQL</div>
+      </div>
+    </div>
+    <div class="join-key">
+      <div>
+        <div class="join-key-code">clientId</div>
+        <div class="join-key-desc">21239 · Scopes label mappings and Snowflake partitions</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Fallback rule:</strong> If the consolidated file is absent for a given <code>taskId</code>, the pipeline uses only the raw message file. Fields sourced from the consolidated file (<code>engagementValuation</code>, <code>impressionsValuation</code>, <code>classifierMetadata</code>, <code>zitem_label_mappings</code>) are set to NULL — not an error condition.
+  </div>
+
+  <div class="rel-diagram">
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+      <!-- SQL Server center -->
+      <rect x="240" y="16" width="160" height="56" rx="6" fill="#f0ddb8" stroke="#9a5f0c" stroke-width="0.75"></rect>
+      <text x="320" y="38" text-anchor="middle" font-size="12" font-weight="500" fill="#6b3f08">SQL Server</text>
+      <text x="320" y="56" text-anchor="middle" font-size="10" fill="#9a5f0c">taskId · clientId · esid</text>
+
+      <!-- Raw S3 -->
+      <rect x="16" y="152" width="160" height="56" rx="6" fill="#b8d9d4" stroke="#0e6b5e" stroke-width="0.75"></rect>
+      <text x="96" y="174" text-anchor="middle" font-size="12" font-weight="500" fill="#0e6b5e">Raw message (S3)</text>
+      <text x="96" y="192" text-anchor="middle" font-size="10" fill="#0e6b5e">taskId · frames · detections</text>
+
+      <!-- Consolidated S3 -->
+      <rect x="240" y="152" width="160" height="56" rx="6" fill="#b8d9d4" stroke="#0e6b5e" stroke-width="0.75"></rect>
+      <text x="320" y="174" text-anchor="middle" font-size="12" font-weight="500" fill="#0e6b5e">Consolidated (S3)</text>
+      <text x="320" y="192" text-anchor="middle" font-size="10" fill="#0e6b5e">brandDetection · valuations</text>
+
+      <!-- Elasticsearch -->
+      <rect x="464" y="152" width="160" height="56" rx="6" fill="#d4cfe8" stroke="#4a3880" stroke-width="0.75"></rect>
+      <text x="544" y="174" text-anchor="middle" font-size="12" font-weight="500" fill="#4a3880">Elasticsearch</text>
+      <text x="544" y="192" text-anchor="middle" font-size="10" fill="#4a3880">esid · tags · metrics</text>
+
+      <!-- SQL → Raw -->
+      <line x1="278" y1="72" x2="140" y2="152" stroke="#9a5f0c" stroke-width="1" marker-end="url(#a)"></line>
+      <text x="192" y="124" text-anchor="middle" font-size="10" fill="#9a5f0c">taskId</text>
+
+      <!-- SQL → Consolidated -->
+      <line x1="320" y1="72" x2="320" y2="152" stroke="#9a5f0c" stroke-width="1" marker-end="url(#a)"></line>
+      <text x="338" y="120" font-size="10" fill="#9a5f0c">taskId + clientId</text>
+
+      <!-- SQL → ES -->
+      <line x1="362" y1="72" x2="500" y2="152" stroke="#9a5f0c" stroke-width="1" marker-end="url(#a)"></line>
+      <text x="460" y="124" text-anchor="middle" font-size="10" fill="#9a5f0c">esid</text>
+
+      <!-- Fact target -->
+      <rect x="200" y="256" width="240" height="48" rx="6" fill="#e8c5b4" stroke="#c4410c" stroke-width="1"></rect>
+      <text x="320" y="275" text-anchor="middle" font-size="12" font-weight="500" fill="#8a2d08">FACT_EXPOSURE</text>
+      <text x="320" y="292" text-anchor="middle" font-size="10" fill="#c4410c">unified Snowflake target</text>
+
+      <!-- sources → fact -->
+      <line x1="176" y1="208" x2="270" y2="256" stroke="#0e6b5e" stroke-width="0.75" stroke-dasharray="4 3" marker-end="url(#a2)"></line>
+      <line x1="320" y1="208" x2="320" y2="256" stroke="#0e6b5e" stroke-width="0.75" stroke-dasharray="4 3" marker-end="url(#a2)"></line>
+      <line x1="464" y1="208" x2="380" y2="256" stroke="#4a3880" stroke-width="0.75" stroke-dasharray="4 3" marker-end="url(#a2)"></line>
+
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#9a5f0c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<!-- —— SECTION 3: ARCHITECTURE —— -->
+<section id="architecture">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>End-to-End Architecture</h2>
+  </div>
+
+  <p>Three-layer data lake on S3 feeds Snowflake via Snowpipe. Ingestion uses S3 event notifications for new files and a Lambda poller for Elasticsearch change detection.</p>
+
+  <div class="layers">
+    <div class="layer">
+      <span class="layer-badge badge-bronze">Bronze</span>
+      <h4>Raw landing</h4>
+      <ul>
+        <li>JSON as-is, no transformation</li>
+        <li>S3 Intelligent-Tiering</li>
+        <li>Partitioned: <code>source/date/clientId</code></li>
+        <li>Lambda writes on S3 event trigger</li>
+        <li>Glue Catalog registered</li>
+        <li>Immutable — append only</li>
+      </ul>
+    </div>
+    <div class="layer">
+      <span class="layer-badge badge-silver">Silver</span>
+      <h4>Normalized &amp; enriched</h4>
+      <ul>
+        <li>Parquet + Delta Lake format</li>
+        <li>Frames and detections exploded</li>
+        <li>Fallback rule applied</li>
+        <li>ES tags exploded to own table</li>
+        <li>SQL Server mapping joined via JDBC</li>
+        <li>Delta MERGE for upserts</li>
+      </ul>
+    </div>
+    <div class="layer">
+      <span class="layer-badge badge-gold">Gold</span>
+      <h4>Snowflake analytics</h4>
+      <ul>
+        <li>Snowpipe monitors silver prefix</li>
+        <li>COPY INTO fact + dimension tables</li>
+        <li>MERGE on <code>(exposure_id, frame_id)</code></li>
+        <li>Clustered by client / month / brand</li>
+        <li>View replaces CSV export</li>
+        <li>Result cache for dashboards</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="arch-wrap">
+    <svg viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg" style="font-family:'DM Mono',monospace">
+      <defs>
+        <marker id="aw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="rgba(245,242,235,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </marker>
+        <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#0e6b5e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </marker>
+      </defs>
+
+      <!-- Sources col -->
+      <rect x="8" y="8" width="110" height="200" rx="6" fill="none" stroke="rgba(245,242,235,0.1)" stroke-width="0.75" stroke-dasharray="4 3"></rect>
+      <text x="63" y="24" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.35)" letter-spacing="0.1em">SOURCES</text>
+      <rect x="16" y="32" width="94" height="28" rx="4" fill="#0e6b5e" opacity="0.6"></rect>
+      <text x="63" y="50" text-anchor="middle" font-size="11" fill="#e1f5ee">S3 JSON</text>
+      <rect x="16" y="68" width="94" height="28" rx="4" fill="#4a3880" opacity="0.7"></rect>
+      <text x="63" y="86" text-anchor="middle" font-size="11" fill="#e8e4f8">Elasticsearch</text>
+      <rect x="16" y="104" width="94" height="28" rx="4" fill="#9a5f0c" opacity="0.7"></rect>
+      <text x="63" y="122" text-anchor="middle" font-size="11" fill="#faeeda">SQL Server</text>
+      <text x="63" y="152" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.3)">mapping only</text>
+
+      <!-- Ingestion col -->
+      <rect x="128" y="8" width="120" height="200" rx="6" fill="none" stroke="rgba(245,242,235,0.1)" stroke-width="0.75" stroke-dasharray="4 3"></rect>
+      <text x="188" y="24" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.35)" letter-spacing="0.1em">INGEST</text>
+      <rect x="136" y="32" width="104" height="28" rx="4" fill="#0e6b5e" opacity="0.5"></rect>
+      <text x="188" y="50" text-anchor="middle" font-size="10" fill="#e1f5ee">S3 event → Lambda</text>
+      <rect x="136" y="68" width="104" height="28" rx="4" fill="#4a3880" opacity="0.5"></rect>
+      <text x="188" y="83" text-anchor="middle" font-size="10" fill="#e8e4f8">ES change poller</text>
+      <text x="188" y="96" text-anchor="middle" font-size="9" fill="rgba(232,228,248,0.6)">Lambda 60s</text>
+      <rect x="136" y="104" width="104" height="28" rx="4" fill="#9a5f0c" opacity="0.5"></rect>
+      <text x="188" y="119" text-anchor="middle" font-size="10" fill="#faeeda">Glue JDBC</text>
+      <rect x="136" y="140" width="104" height="28" rx="4" fill="rgba(245,242,235,0.12)"></rect>
+      <text x="188" y="158" text-anchor="middle" font-size="10" fill="rgba(245,242,235,0.5)">Kinesis Firehose</text>
+
+      <!-- Bronze col -->
+      <rect x="260" y="8" width="110" height="200" rx="6" fill="rgba(154,95,12,0.12)" stroke="rgba(154,95,12,0.4)" stroke-width="0.75" stroke-dasharray="4 3"></rect>
+      <text x="315" y="24" text-anchor="middle" font-size="9" fill="rgba(240,221,184,0.7)" letter-spacing="0.1em">BRONZE</text>
+      <rect x="268" y="32" width="94" height="36" rx="4" fill="rgba(154,95,12,0.35)"></rect>
+      <text x="315" y="48" text-anchor="middle" font-size="10" fill="#faeeda">s3://lake/bronze/</text>
+      <text x="315" y="62" text-anchor="middle" font-size="9" fill="rgba(240,221,184,0.6)">raw JSON</text>
+      <text x="315" y="90" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">source/date/clientId</text>
+      <text x="315" y="108" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">JSON compressed</text>
+      <text x="315" y="126" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">Intelligent-Tiering</text>
+      <text x="315" y="144" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">Glue Catalog</text>
+      <text x="315" y="162" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">append-only</text>
+
+      <!-- Silver col -->
+      <rect x="382" y="8" width="116" height="200" rx="6" fill="rgba(26,79,122,0.15)" stroke="rgba(26,79,122,0.4)" stroke-width="0.75" stroke-dasharray="4 3"></rect>
+      <text x="440" y="24" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.7)" letter-spacing="0.1em">SILVER</text>
+      <rect x="390" y="32" width="100" height="36" rx="4" fill="rgba(26,79,122,0.4)"></rect>
+      <text x="440" y="48" text-anchor="middle" font-size="10" fill="#c2d8ec">s3://lake/silver/</text>
+      <text x="440" y="62" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">Parquet + Delta</text>
+      <text x="440" y="90" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">detections exploded</text>
+      <text x="440" y="108" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">fallback rule applied</text>
+      <text x="440" y="126" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">ES tags exploded</text>
+      <text x="440" y="144" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">Glue ETL job</text>
+      <text x="440" y="162" text-anchor="middle" font-size="9" fill="rgba(245,242,235,0.4)">Delta MERGE upserts</text>
+
+      <!-- Snowflake box -->
+      <rect x="8" y="232" width="620" height="180" rx="8" fill="rgba(14,107,94,0.1)" stroke="#0e6b5e" stroke-width="0.75" stroke-dasharray="5 3"></rect>
+      <text x="318" y="250" text-anchor="middle" font-size="10" fill="#8fc2a8" letter-spacing="0.1em">GOLD · SNOWFLAKE</text>
+
+      <!-- Dim boxes -->
+      <rect x="16" y="258" width="86" height="48" rx="4" fill="rgba(26,79,122,0.5)"></rect>
+      <text x="59" y="277" text-anchor="middle" font-size="10" fill="#c2d8ec">DIM_CLIENT</text>
+      <text x="59" y="293" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">clientId · name</text>
+
+      <rect x="110" y="258" width="86" height="48" rx="4" fill="rgba(26,79,122,0.5)"></rect>
+      <text x="153" y="277" text-anchor="middle" font-size="10" fill="#c2d8ec">DIM_BRAND</text>
+      <text x="153" y="293" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">brandKey · class</text>
+
+      <rect x="204" y="258" width="86" height="48" rx="4" fill="rgba(26,79,122,0.5)"></rect>
+      <text x="247" y="277" text-anchor="middle" font-size="10" fill="#c2d8ec">DIM_ASSET</text>
+      <text x="247" y="293" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">assetKey · class</text>
+
+      <rect x="298" y="258" width="100" height="48" rx="4" fill="rgba(26,79,122,0.5)"></rect>
+      <text x="348" y="277" text-anchor="middle" font-size="10" fill="#c2d8ec">DIM_CLASSIFIER</text>
+      <text x="348" y="293" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">configId · model</text>
+
+      <rect x="406" y="258" width="80" height="48" rx="4" fill="rgba(26,79,122,0.5)"></rect>
+      <text x="446" y="277" text-anchor="middle" font-size="10" fill="#c2d8ec">DIM_DATE</text>
+      <text x="446" y="293" text-anchor="middle" font-size="9" fill="rgba(194,216,236,0.6)">date · week · qtr</text>
+
+      <!-- Fact box -->
+      <rect x="64" y="322" width="420" height="52" rx="4" fill="rgba(196,65,12,0.45)" stroke="#c4410c" stroke-width="0.75"></rect>
+      <text x="274" y="342" text-anchor="middle" font-size="11" font-weight="500" fill="#fde8dc">FACT_EXPOSURE  ·  one row per detection × frame</text>
+      <text x="274" y="360" text-anchor="middle" font-size="9" fill="rgba(253,232,220,0.7)">esid · taskId · clientId · frameId · detectionId · brandKey · assetKey · confidence · valuations · tags[]</text>
+
+      <!-- ES tags side table -->
+      <rect x="492" y="322" width="130" height="52" rx="4" fill="rgba(74,56,128,0.5)"></rect>
+      <text x="557" y="342" text-anchor="middle" font-size="10" fill="#d4cfe8">FACT_ES_TAGS</text>
+      <text x="557" y="358" text-anchor="middle" font-size="9" fill="rgba(212,207,232,0.6)">esid · tagType · tagValue</text>
+      <text x="557" y="372" text-anchor="middle" font-size="9" fill="rgba(212,207,232,0.6)">fully searchable</text>
+
+      <!-- Arrows sources → ingestion -->
+      <line x1="110" y1="46" x2="136" y2="46" stroke="rgba(14,107,94,0.7)" stroke-width="0.75" marker-end="url(#aw)"></line>
+      <line x1="110" y1="82" x2="136" y2="82" stroke="rgba(74,56,128,0.7)" stroke-width="0.75" marker-end="url(#aw)"></line>
+      <line x1="110" y1="118" x2="136" y2="118" stroke="rgba(154,95,12,0.7)" stroke-width="0.75" marker-end="url(#aw)"></line>
+
+      <!-- Ingestion → Bronze -->
+      <line x1="240" y1="96" x2="268" y2="96" stroke="rgba(245,242,235,0.25)" stroke-width="0.75" marker-end="url(#aw)"></line>
+
+      <!-- Bronze → Silver -->
+      <line x1="370" y1="96" x2="390" y2="96" stroke="rgba(245,242,235,0.25)" stroke-width="0.75" marker-end="url(#aw)"></line>
+
+      <!-- Silver → Snowflake -->
+      <path d="M498 208 L498 222 L274 222 L274 232" fill="none" stroke="#0e6b5e" stroke-width="0.75" stroke-dasharray="4 3" marker-end="url(#ag)"></path>
+      <text x="390" y="220" text-anchor="middle" font-size="9" fill="#8fc2a8">Snowpipe / COPY INTO</text>
+    </svg>
+  </div>
+</section>
+
+<!-- —— SECTION 4: SCHEMA —— -->
+<section id="schema">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>Snowflake Schema Design</h2>
+  </div>
+
+  <p>Star schema with exposure-level granularity. The fact table is <strong>non-deduplicated by design</strong> — one row per detection per frame preserves complete granularity for flexible aggregation.</p>
+
+  <!-- FACT_EXPOSURE -->
+  <div class="schema-block">
+    <div class="schema-title">FACT_EXPOSURE <span class="schema-type">fact · clustered by client_id, month, brand_key</span></div>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="col-key">PK</span>exposure_id</td><td class="col-type">VARCHAR</td><td class="col-note">detectionId UUID from raw file</td></tr>
+        <tr><td><span class="col-key">PK</span>frame_id</td><td class="col-type">NUMBER</td><td class="col-note">frames[].id from raw file</td></tr>
+        <tr><td>esid</td><td class="col-type">VARCHAR</td><td class="col-note">79801|1|1908676407850377371 — ES composite key</td></tr>
+        <tr><td>task_id</td><td class="col-type">VARCHAR</td><td class="col-note">UUID linking raw and consolidated files</td></tr>
+        <tr><td><span class="col-fk">FK</span>client_id</td><td class="col-type">NUMBER</td><td class="col-note">→ DIM_CLIENT</td></tr>
+        <tr><td><span class="col-fk">FK</span>brand_key</td><td class="col-type">NUMBER</td><td class="col-note">→ DIM_BRAND</td></tr>
+        <tr><td><span class="col-fk">FK</span>asset_key</td><td class="col-type">NUMBER</td><td class="col-note">→ DIM_ASSET</td></tr>
+        <tr><td><span class="col-fk">FK</span>classifier_key</td><td class="col-type">NUMBER</td><td class="col-note">→ DIM_CLASSIFIER</td></tr>
+        <tr><td>frame_time_ms</td><td class="col-type">NUMBER</td><td class="col-note">0, 1001, 2002 ... 6006</td></tr>
+        <tr><td>confidence</td><td class="col-type">FLOAT</td><td class="col-note">Model detection confidence 0–1</td></tr>
+        <tr><td>bb_top / bb_bottom / bb_left / bb_right</td><td class="col-type">FLOAT</td><td class="col-note">Queryable bounding box coordinates</td></tr>
+        <tr><td>bounding_box</td><td class="col-type">VARIANT</td><td class="col-note">Full JSON preserved for flexibility</td></tr>
+        <tr><td>lq_sharpness / lq_centrality / lq_contrast / lq_magnitude / lq_clearness / lq_uniformity</td><td class="col-type">FLOAT</td><td class="col-note">Individual quality scores for filtering</td></tr>
+        <tr><td>logo_quality</td><td class="col-type">VARIANT</td><td class="col-note">Full quality object as JSON</td></tr>
+        <tr><td>detected_seconds</td><td class="col-type">FLOAT</td><td class="col-note">From consolidated brandDetection summary</td></tr>
+        <tr><td>logo_impressions</td><td class="col-type">NUMBER</td><td class="col-note">From consolidated brandDetection summary</td></tr>
+        <tr><td>engagement_value / impressions_value</td><td class="col-type">FLOAT</td><td class="col-note">Valuation outputs — NULL if consolidated missing</td></tr>
+        <tr><td>tags</td><td class="col-type">ARRAY</td><td class="col-note">Denormalized copy for fast single-row access</td></tr>
+        <tr><td>is_deleted / is_manually_edited</td><td class="col-type">BOOLEAN</td><td class="col-note">Soft delete + edit flags from raw detection</td></tr>
+        <tr><td>loaded_at / updated_at</td><td class="col-type">TIMESTAMP_NTZ</td><td class="col-note">Audit trail for MERGE tracking</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FACT_ES_TAGS -->
+  <div class="schema-block">
+    <div class="schema-title">FACT_ES_TAGS <span class="schema-type">fact · fully searchable tags</span></div>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="col-key">PK</span>esid</td><td class="col-type">VARCHAR</td><td class="col-note">Composite ES key</td></tr>
+        <tr><td><span class="col-key">PK</span>tag_type</td><td class="col-type">VARCHAR</td><td class="col-note">'Logo AI', 'Logo On Asset', 'Asset'</td></tr>
+        <tr><td><span class="col-key">PK</span>tag_value</td><td class="col-type">VARCHAR</td><td class="col-note">'kia_motors', 'kia_motors | pole_pad'</td></tr>
+        <tr><td>tag_raw</td><td class="col-type">VARCHAR</td><td class="col-note">Original full tag string for parity with ES</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FACT_POST_METRICS -->
+  <div class="schema-block">
+    <div class="schema-title">FACT_POST_METRICS <span class="schema-type">fact · one row per esid · prevents metric fan-out</span></div>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="col-key">PK</span>esid</td><td class="col-type">VARCHAR</td><td class="col-note">Exactly one row per post</td></tr>
+        <tr><td>impressions / organic_impressions</td><td class="col-type">NUMBER</td><td class="col-note">29,524 / 29,360 for sample post</td></tr>
+        <tr><td>engagement / like_count / retweet_count / reply_count</td><td class="col-type">NUMBER</td><td class="col-note">673 / 357 / 36 / 9 for sample</td></tr>
+        <tr><td>video_views / video_views_actual</td><td class="col-type">NUMBER</td><td class="col-note">4,401 for sample post</td></tr>
+        <tr><td>author_id / author_name / author_followers / is_verified</td><td class="col-type">VARCHAR/NUMBER/BOOLEAN</td><td class="col-note">DetroitPistons / 1,151,288 / true</td></tr>
+        <tr><td>social_value / post_value / z_points</td><td class="col-type">NUMBER</td><td class="col-note">989 / — / 82 for sample</td></tr>
+        <tr><td>sentiment / detected_language</td><td class="col-type">VARCHAR</td><td class="col-note">NLP outputs from ES</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- —— SECTION 5: QUERIES —— -->
+<section id="queries">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2>Example Queries</h2>
+  </div>
+
+  <h3>Brand-level aggregation</h3>
+  <div class="code-block">
+    <div class="code-block-label">SQL · Snowflake</div>
+    <pre><span class="kw">SELECT</span>
+  b.brand_class,
+  <span class="fn">SUM</span>(e.logo_impressions)   <span class="kw">AS</span> total_impressions,
+  <span class="fn">SUM</span>(e.engagement_value)   <span class="kw">AS</span> total_engagement_value,
+  <span class="fn">SUM</span>(e.impressions_value)  <span class="kw">AS</span> total_impressions_value,
+  <span class="fn">AVG</span>(e.confidence)         <span class="kw">AS</span> avg_confidence,
+  <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> e.esid)    <span class="kw">AS</span> posts_detected
+<span class="kw">FROM</span> FACT_EXPOSURE e
+  <span class="kw">JOIN</span> DIM_BRAND b <span class="kw">ON</span> e.brand_key = b.brand_key
+<span class="kw">WHERE</span> e.client_id = <span class="num">21239</span>
+  <span class="kw">AND</span> b.brand_class <span class="kw">IN</span> (<span class="str">'kia_motors'</span>, <span class="str">'henry_ford_health_system'</span>)
+<span class="kw">GROUP BY</span> b.brand_class
+<span class="kw">ORDER BY</span> total_engagement_value <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h3>Asset-level breakdown</h3>
+  <div class="code-block">
+    <div class="code-block-label">SQL · Snowflake</div>
+    <pre><span class="kw">SELECT</span>
+  b.brand_class,
+  a.asset_class,
+  <span class="fn">SUM</span>(e.detected_seconds)  <span class="kw">AS</span> total_detected_seconds,
+  <span class="fn">SUM</span>(e.logo_impressions)   <span class="kw">AS</span> total_impressions,
+  <span class="fn">AVG</span>(e.lq_sharpness)       <span class="kw">AS</span> avg_sharpness
+<span class="kw">FROM</span> FACT_EXPOSURE e
+  <span class="kw">JOIN</span> DIM_BRAND b <span class="kw">ON</span> e.brand_key = b.brand_key
+  <span class="kw">JOIN</span> DIM_ASSET a <span class="kw">ON</span> e.asset_key = a.asset_key
+<span class="kw">WHERE</span> e.client_id = <span class="num">21239</span>
+  <span class="kw">AND</span> a.asset_class = <span class="str">'pole_pad'</span>
+<span class="kw">GROUP BY</span> b.brand_class, a.asset_class;</pre>
+  </div>
+
+  <h3>Tag-based search — ES parity</h3>
+  <div class="code-block">
+    <div class="code-block-label">SQL · Snowflake</div>
+    <pre><span class="cmt">-- Find all posts where StockX appeared on a jersey</span>
+<span class="kw">SELECT DISTINCT</span>
+  e.esid,
+  m.author_name,
+  m.video_views,
+  m.engagement
+<span class="kw">FROM</span> FACT_ES_TAGS t
+  <span class="kw">JOIN</span> FACT_EXPOSURE e     <span class="kw">ON</span> t.esid = e.esid
+  <span class="kw">JOIN</span> FACT_POST_METRICS m <span class="kw">ON</span> t.esid = m.esid
+<span class="kw">WHERE</span> t.tag_type  = <span class="str">'Logo On Asset'</span>
+  <span class="kw">AND</span> t.tag_value = <span class="str">'stockx | jersey'</span>;
+
+<span class="cmt">-- Posts where both Kia AND Henry Ford appeared (multi-tag AND)</span>
+<span class="kw">SELECT</span> esid, <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> tag_value) <span class="kw">AS</span> matched_tags
+<span class="kw">FROM</span> FACT_ES_TAGS
+<span class="kw">WHERE</span> tag_value <span class="kw">IN</span> (<span class="str">'kia_motors'</span>, <span class="str">'henry_ford_health_system'</span>)
+<span class="kw">GROUP BY</span> esid
+<span class="kw">HAVING</span> matched_tags = <span class="num">2</span>;</pre>
+  </div>
+
+  <h3>Reporting view — replaces CSV export</h3>
+  <div class="code-block">
+    <div class="code-block-label">SQL · Snowflake · VW_REPORT_EXPOSURE</div>
+    <pre><span class="kw">SELECT</span>
+  e.esid, b.brand_class <span class="kw">AS</span> brand, a.asset_class <span class="kw">AS</span> asset,
+  c.display_name <span class="kw">AS</span> partner, m.author_name, m.impressions,
+  m.engagement, m.video_views, e.confidence,
+  e.detected_seconds, e.logo_impressions,
+  e.engagement_value <span class="kw">AS</span> brand_exposure_value,
+  e.lq_sharpness, e.lq_centrality, e.lq_clearness,
+  e.frame_url, e.thumbnail_url
+<span class="kw">FROM</span> VW_REPORT_EXPOSURE
+<span class="kw">WHERE</span> client_id = <span class="num">21239</span>
+  <span class="kw">AND</span> brand <span class="kw">LIKE</span> <span class="str">'%kia%'</span>
+<span class="kw">ORDER BY</span> brand_exposure_value <span class="kw">DESC</span>;</pre>
+  </div>
+</section>
+
+<!-- —— SECTION 6: UPDATE STRATEGY —— -->
+<section id="updates">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2>Incremental Update Strategy</h2>
+  </div>
+
+  <p>Change detection is based on Elasticsearch's <code>lastZmphUpdate</code> field. A DynamoDB watermark table tracks the last-seen timestamp per feed. Lambda polls every 60 seconds and enqueues changed <code>esid</code> values to SQS for batch processing.</p>
+
+  <div class="update-steps">
+    <div class="update-step">
+      <div class="step-num">01</div>
+      <div class="step-title">ES change detected</div>
+      <div class="step-sub">Poll lastZmphUpdate &gt; DynamoDB watermark</div>
+    </div>
+    <div class="update-step">
+      <div class="step-num">02</div>
+      <div class="step-title">Lambda extractor</div>
+      <div class="step-sub">Fetch changed esid docs, write to S3 bronze/updates/</div>
+    </div>
+    <div class="update-step">
+      <div class="step-num">03</div>
+      <div class="step-title">Glue ETL re-run</div>
+      <div class="step-sub">Re-flatten and enrich only affected esid partition</div>
+    </div>
+    <div class="update-step">
+      <div class="step-num">04</div>
+      <div class="step-title">Snowflake MERGE</div>
+      <div class="step-sub">MATCHED → UPDATE, NOT MATCHED → INSERT</div>
+    </div>
+    <div class="update-step">
+      <div class="step-num">05</div>
+      <div class="step-title">Tags refresh</div>
+      <div class="step-sub">DELETE WHERE esid, re-INSERT updated tag set</div>
+    </div>
+  </div>
+
+  <h3>MERGE statement</h3>
+  <div class="code-block">
+    <div class="code-block-label">SQL · Snowflake · MERGE on composite key</div>
+    <pre><span class="kw">MERGE INTO</span> FACT_EXPOSURE tgt
+<span class="kw">USING</span> staging_detections src
+  <span class="kw">ON</span> tgt.exposure_id = src.exposure_id
+ <span class="kw">AND</span> tgt.frame_id    = src.frame_id
+<span class="kw">WHEN MATCHED THEN UPDATE SET</span>
+  confidence        = src.confidence,
+  engagement_value  = src.engagement_value,
+  impressions_value = src.impressions_value,
+  is_deleted        = src.is_deleted,
+  updated_at        = <span class="fn">CURRENT_TIMESTAMP</span>()
+<span class="kw">WHEN NOT MATCHED THEN INSERT</span> (
+  exposure_id, esid, task_id, client_id,
+  frame_id, frame_time_ms, brand_key, asset_key,
+  confidence, detected_seconds, logo_impressions,
+  engagement_value, impressions_value, loaded_at
+) <span class="kw">VALUES</span> (
+  src.exposure_id, src.esid, src.task_id, src.client_id,
+  src.frame_id, src.frame_time_ms, src.brand_key, src.asset_key,
+  src.confidence, src.detected_seconds, src.logo_impressions,
+  src.engagement_value, src.impressions_value, <span class="fn">CURRENT_TIMESTAMP</span>()
+);</pre>
+  </div>
+
+  <div class="callout callout-teal">
+    <strong>Key design decision:</strong> The MERGE key is <code>(exposure_id, frame_id)</code> — a reprocessed detection updates in-place without creating a duplicate row. The composite key guarantees referential integrity even when the same brand is detected in multiple frames of the same post.
+  </div>
+</section>
+
+<!-- —— SECTION 7: OPTIMIZATION —— -->
+<section id="optimization">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2>Optimization</h2>
+  </div>
+
+  <table class="opt-table">
+    <thead>
+      <tr><th>Area</th><th>Recommendation</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Snowflake clustering</strong></td>
+        <td><code>CLUSTER BY (client_id, DATE_TRUNC('month', loaded_at), brand_key)</code></td>
+        <td>Matches query patterns — nearly every dashboard filter starts with client scope, then date range, then brand. Expect 60–80% partition pruning.</td>
+      </tr>
+      <tr>
+        <td><strong>S3 storage tiering</strong></td>
+        <td>Bronze: S3 Intelligent-Tiering. Silver: S3 Standard.</td>
+        <td>Bronze objects accessed infrequently after 30 days auto-migrate to cheaper tiers. Silver stays Standard — Glue reads it frequently during incremental jobs.</td>
+      </tr>
+      <tr>
+        <td><strong>Snowflake warehouse sizing</strong></td>
+        <td>XS for Snowpipe ingest. S/M for dashboard queries.</td>
+        <td>Snowpipe runs in background — XS is sufficient. Dashboard aggregation queries benefit from result caching; S or M warehouse handles concurrent users without over-provisioning.</td>
+      </tr>
+      <tr>
+        <td><strong>Silver partitioning</strong></td>
+        <td><code>clientId={x}/year={y}/month={m}/</code></td>
+        <td>Glue incremental jobs read only the affected partition on reprocessing, keeping DPU costs low. Snowpipe tracks which Parquet files it has already loaded.</td>
+      </tr>
+      <tr>
+        <td><strong>Metric fan-out prevention</strong></td>
+        <td>Post metrics stay in FACT_POST_METRICS (one row per esid), joined at query time.</td>
+        <td>If impression counts were copied into each per-detection exposure row, a post with 10 brand detections would report 10× the actual impressions in aggregate queries.</td>
+      </tr>
+      <tr>
+        <td><strong>Glue ETL batching</strong></td>
+        <td>SQS queue buffers changed esid set. Glue job triggered when queue depth &gt; 50 or after 5 min TTL.</td>
+        <td>Avoids per-record Lambda invocations at scale. Batch processing is more cost-effective at &gt;1K records/min.</td>
+      </tr>
+      <tr>
+        <td><strong>Delta Lake transaction log</strong></td>
+        <td>Use Delta's change data feed for Snowpipe incremental loads.</td>
+        <td>Delta's <code>_change_data</code> feed provides exact list of new/modified Parquet files since last load — eliminates full-prefix scanning by Snowpipe.</td>
+      </tr>
+      <tr>
+        <td><strong>Snowflake result caching</strong></td>
+        <td>Enable result caching on reporting virtual warehouse.</td>
+        <td>Dashboard queries hitting the same client + date + brand filters repeat frequently. First query executes; subsequent identical queries return cached results in milliseconds at zero compute cost.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<footer>
+  <span>Data Architecture Brief · Unified Analytics Pipeline · Solution 1</span>
+  <span>AWS + Snowflake · Internal use only</span>
+</footer>
+
+</body></html>
